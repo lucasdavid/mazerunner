@@ -7,7 +7,7 @@ setup(
     name='mazerunner',
     description='A behavior implemented for NAO Robot on V-REP environment.',
     long_description=open('README.md').read(),
-    version='0.1',
+    version='1',
     packages=['mazerunner'],
     scripts=[],
     author='Lucas David',
@@ -15,6 +15,6 @@ setup(
 
     url='https://github.com/lucasdavid/mazerunner',
     download_url='https://github.com/lucasdavid/mazerunner/archive/master.zip',
-    install_requires=[],
+    install_requires=['six', 'enum'],
     tests_require=open('requirements-dev.txt').readlines(),
 )

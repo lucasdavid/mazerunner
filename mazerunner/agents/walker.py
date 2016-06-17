@@ -9,38 +9,38 @@ from threading import Thread
 
 import motion
 
-from . import base, utils
+from . import base
 
 
-class Walker(base.Agent):
+class Walker(base.RoboticAgent):
     """Walker Agent."""
 
     def __init__(self, robot_ip, robot_port):
-        base.Agent.__init__(self, robot_ip, robot_port)
-        self.action_job_ = None
+        base.RoboticAgent.__init__(self, robot_ip, robot_port)
+        self.acting_ = False
+        self.act_routine_ = None
 
     def perceive(self):
         return self
 
     def act(self):
-        if not self.busy_:
-            self.action_job_ = Thread(target=self.routine)
-            self.action_job_.start()
+        if not self.acting_:
+            self.act_routine_ = Thread(target=self.routine)
+            self.act_routine_.start()
 
         return self
 
     def routine(self):
-        self.busy_ = True
-        utils.stiffness_on(self.motion_proxy)
-        self.posture_proxy.goToPosture("StandInit", 0.5)
-        self.motion_proxy.setWalkArmsEnabled(True, True)
-        self.motion_proxy.setMotionConfig([["ENABLE_FOOT_CONTACT_PROTECTION",
-                                            True]])
+        self.acting_ = True
+
+        self.motion.wakeUp()
+        self.posture.goToPosture('StandInt', .5)
+
         X = -0.5
         Y = 0.0
         Theta = 0.0
         Frequency = 0.0
-        self.motion_proxy.setWalkTargetVelocity(X, Y, Theta, Frequency)
+        self.motion.setWalkTargetVelocity(X, Y, Theta, Frequency)
 
         time.sleep(4.0)
 
@@ -49,7 +49,7 @@ class Walker(base.Agent):
         Y = 0.0
         Theta = 0.0
         Frequency = 1.0  # max speed
-        self.motion_proxy.setWalkTargetVelocity(X, Y, Theta, Frequency)
+        self.motion.setWalkTargetVelocity(X, Y, Theta, Frequency)
 
         time.sleep(4.0)
 
@@ -58,7 +58,7 @@ class Walker(base.Agent):
         Y = -0.5
         Theta = 0.2
         Frequency = 1.0
-        self.motion_proxy.setWalkTargetVelocity(X, Y, Theta, Frequency)
+        self.motion.setWalkTargetVelocity(X, Y, Theta, Frequency)
 
         time.sleep(2.0)
 
@@ -76,22 +76,21 @@ class Walker(base.Agent):
 
         pFractionMaxSpeed = 0.6
 
-        self.motion_proxy.angleInterpolationWithSpeed(JointNames, Arm1,
-                                                      pFractionMaxSpeed)
-        self.motion_proxy.angleInterpolationWithSpeed(JointNames, Arm2,
-                                                      pFractionMaxSpeed)
-        self.motion_proxy.angleInterpolationWithSpeed(JointNames, Arm1,
-                                                      pFractionMaxSpeed)
+        self.motion.angleInterpolationWithSpeed(JointNames, Arm1,
+                                                pFractionMaxSpeed)
+        self.motion.angleInterpolationWithSpeed(JointNames, Arm2,
+                                                pFractionMaxSpeed)
+        self.motion.angleInterpolationWithSpeed(JointNames, Arm1,
+                                                pFractionMaxSpeed)
 
         time.sleep(2.0)
 
-        #####################
-        ## End Walk
-        #####################
-        # TARGET VELOCITY
-        X = 0.0
-        Y = 0.0
-        Theta = 0.0
-        self.motion_proxy.setWalkTargetVelocity(X, Y, Theta, Frequency)
+        self.motion.stopMove()
+        self.motion.rest()
 
-        self.busy_ = False
+        self.acting_ = False
+
+    def dispose(self):
+        if self.act_routine_:
+            self.act_routine_.join()
+            self.act_routine_ = None
