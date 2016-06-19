@@ -2,9 +2,8 @@
 
 Joint manager used to link NAO robot to V-REP simulator.
 
-Authors:
-    Pierre Jacquot
-    Lucas David -- <ld492@drexel.edu>
+Author: Lucas David -- <ld492@drexel.edu>
+License: MIT (c) 2016
 
 """
 import logging

@@ -6,11 +6,13 @@ Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
 """
-import time
+import logging
 from enum import Enum
 from naoqi import ALProxy
 
-from ..utils import JointManager
+from .. import components, utils
+
+logger = logging.getLogger('mazerunner')
 
 
 class Agent(object):
@@ -42,6 +44,8 @@ class RoboticAgent(Agent):
     States = Enum('disabled', 'idle', 'moving', 'thinking', 'dead')
 
     def __init__(self, identity='', interface=('127.0.0.1', 5000)):
+        super(RoboticAgent, self).__init__()
+
         if len(interface) != 2:
             raise ValueError('Invalid interface: %s' % str(interface))
 
@@ -50,20 +54,12 @@ class RoboticAgent(Agent):
 
         self.motion = ALProxy("ALMotion", *interface)
         self.posture = ALProxy("ALRobotPosture", *interface)
-        self.memory = ALProxy('ALMemory', *interface)
-        self.sonar = ALProxy('ALSonar', *interface)
 
-        self.true_identity_ = 'robot-' + str(identity)
-        self.state_ = self.States.disabled
+        self.sensors = dict()
 
         self.link_ = None
         self.joint_manager_ = None
-
-    def act(self):
-        """Find a method with the same name of its current state and execute
-        it.
-        """
-        return getattr(self, str(self.state_))()
+        self.state_ = self.States.disabled
 
     def start(self, link):
         self.link_ = link
@@ -71,18 +67,37 @@ class RoboticAgent(Agent):
         self.motion.wakeUp()
         self.posture.goToPosture('Stand', .5)
 
-        self.joint_manager_ = JointManager(link=self.link_,
-                                           motion=self.motion,
-                                           identity=self.identity)
+        self.joint_manager_ = utils.JointManager(link=self.link_,
+                                                 motion=self.motion,
+                                                 identity=self.identity)
         self.joint_manager_.start()
-        self.sonar.subscribe(self.true_identity_)
+
+        self.sensors['vision'] = (
+            components.Camera(link, component_id=1),
+            components.Camera(link, component_id=2),
+        )
+
+        self.sensors['proximity'] = (
+            components.ProximitySensor(link, component_id=1),
+        )
 
         self.state_ = self.States.idle
 
+    def perceive(self):
+        for camera in self.sensors['vision']: camera.read()
+        for sensor in self.sensors['proximity']: sensor.read()
+
+        return self
+
+    def act(self):
+        """Find a method with the same name of its current state and execute
+        it.
+        """
+        return getattr(self, str(self.state_))()
+
     def dispose(self):
-        self.sonar.unsubscribe(self.true_identity_)
         self.motion.stopMove()
-        self.motion.rest()
+        self.posture.goToPosture('Stand', .5)
 
         # Stop sync routine.
         self.joint_manager_.active_ = False

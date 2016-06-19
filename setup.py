@@ -7,7 +7,7 @@ setup(
     name='mazerunner',
     description='A behavior implemented for NAO Robot on V-REP environment.',
     long_description=open('README.md').read(),
-    version='1',
+    version='0.1',
     packages=['mazerunner'],
     scripts=[],
     author='Lucas David',

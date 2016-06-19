@@ -6,10 +6,9 @@ License: MIT (c) 2016
 """
 import logging
 
-from enum import Enum
+import time
 
 from . import base
-from ..utils import vrep
 
 logger = logging.getLogger('mazerunner')
 
@@ -22,29 +21,11 @@ class Walker(base.RoboticAgent):
 
     MAX_SPEED = 1
     speed = 1
-    # perception = {}
 
-    @property
-    def in_imminent_collision(self):
-        # return self.perception['sonar/left'] < .2 or
-        # self.perception['sonar/right'] < .2
-        return False
+    def __init__(self, identity='', interface=('127.0.0.1', 5000)):
+        super(Walker, self).__init__(identity, interface)
 
-    def perceive(self):
-        # self.perception['sonar/left'] = self.memory.getData(
-        #     'Device/SubDeviceList/US/Left/Sensor/Value')
-        # logger.info('left sonar: %s', str(self.perception['sonar/left']))
-        #
-        # self.perception['sonar/right'] = self.memory.getData(
-        #     'Device/SubDeviceList/US/Right/Sensor/Value')
-        # logger.info('right sonar: %s', str(self.perception['sonar/right']))
-        # res1, visionSensorHandle = vrep.simxGetObjectHandle(
-        #     self.link, 'NAO_vision1', vrep.simx_opmode_oneshot_wait)
-        #
-        # res2, resolution, image = vrep.simxGetVisionSensorImage(
-        #     self.link, visionSensorHandle, 0, vrep.simx_opmode_streaming)
-
-        return self
+        self._imminent_collision = False
 
     def idle(self):
         self.motion.moveToward(self.speed, 0, 0)
@@ -52,17 +33,16 @@ class Walker(base.RoboticAgent):
         self.state_ = self.States.moving
 
     def moving(self):
-        if self.in_imminent_collision:
+        if any(s.imminent_collision for s in self.sensors['proximity']):
             self.motion.stopMove()
-            self.motion.rest()
+            self.posture.goToPosture('Stand', 1)
             self.state_ = self.States.thinking
 
-    def thinking(self):
-        pass
+    def thinking(self): pass
 
     def dispose(self):
         super(Walker, self).dispose()
         self.motion.stopMove()
-        self.motion.rest()
+        self.posture.goToPosture('Stand', 1)
 
         return self
