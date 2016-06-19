@@ -1,7 +1,5 @@
 """Simple Navigator Example.
 
-In this example, the agent navigates through the scene, looking for its goal.
-
 Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
@@ -20,7 +18,12 @@ if __name__ == "__main__":
     print(__doc__)
     args = client_parser.parse_args()
 
-    runners = [Navigator(args.ip, args.port)]
-    maze = mazerunner.Environment(agents=runners, update_period=2,
+    ips_and_ports = zip(args.ip.split(' '), args.port.split(' '))
+
+    robots = [Navigator('navigator-%i' % robot_id, (ip, port))
+              for robot_id, (ip, port) in enumerate(ips_and_ports)]
+
+    maze = mazerunner.Environment(agents=robots,
+                                  update_period=2,
                                   life_cycles=args.iterations).live()
     print('Bye.')

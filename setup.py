@@ -15,6 +15,6 @@ setup(
 
     url='https://github.com/lucasdavid/mazerunner',
     download_url='https://github.com/lucasdavid/mazerunner/archive/master.zip',
-    install_requires=['six', 'enum'],
+    install_requires=['enum'],
     tests_require=open('requirements-dev.txt').readlines(),
 )

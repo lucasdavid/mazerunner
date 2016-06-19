@@ -10,18 +10,18 @@ License: MIT (c) 2016
 import logging
 import time
 
-from .base import IDisposable
+from .utils import vrep
 
 logger = logging.getLogger('mazerunner')
 
 
-class Environment(IDisposable):
+class Environment:
     """Environment.
 
     Execution manager for agents' periodic perception and action, controlling
     frequency and iteration count.
 
-    :param agents: list, default=None
+    :param agents: list, default=()
         List of agents that compose this environment. If None is passed,
         assume that they will be inserted afterwards.
 
@@ -35,11 +35,13 @@ class Environment(IDisposable):
         `StopIteration` is raised.
     """
 
-    def __init__(self, agents=None, update_period=.1, life_cycles=None):
-        self.agents = agents or []
+    def __init__(self, agents=(), update_period=.1, life_cycles=None):
+        self.agents = agents
         self.update_period = update_period
         self.life_cycles = life_cycles
+
         self.cycle_ = -1
+        self.link_ = None
 
     @property
     def is_alive(self):
@@ -54,7 +56,6 @@ class Environment(IDisposable):
 
     def live(self):
         """Makes This Environment Alive."""
-
         if self.is_alive:
             logging.error('Attempted to start an already '
                           'alive environment\'s life.')
@@ -62,7 +63,9 @@ class Environment(IDisposable):
 
         logger.info('Environment will live for %s iterations!',
                     str(self.life_cycles or 'infinite'))
+
         self.cycle_ = 0
+        self.initiate_agents()
 
         try:
             while self.is_alive:
@@ -82,8 +85,21 @@ class Environment(IDisposable):
 
         return self
 
+    def initiate_agents(self):
+        logger.info('establishing link between V-REP and NAO...')
+
+        vrep.simxFinish(-1)
+        link = vrep.simxStart('127.0.0.1', 19999, True, True, 5000, 5)
+
+        assert link != -1, 'Could not connect to V-REP API.'
+
+        for agent in self.agents:
+            agent.start(link)
+
+        logger.info('link established')
+
     def dispose(self):
         for agent in self.agents:
             agent.dispose()
 
-        return self
+        vrep.simxFinish(-1)

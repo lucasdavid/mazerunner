@@ -8,17 +8,24 @@ import logging
 
 import mazerunner
 from mazerunner.agents import Walker
-from mazerunner.base.arguments import client_parser
 
 logging.basicConfig()
 logger = logging.getLogger('mazerunner')
 logger.setLevel(logging.DEBUG)
 
+ROBOT_INTERFACES = [
+    ('127.0.0.1', 5000),
+]
+
+ITERATIONS = None
+
 if __name__ == "__main__":
     print(__doc__)
-    args = client_parser.parse_args()
 
-    runners = [Walker(args.ip, args.port)]
-    maze = mazerunner.Environment(agents=runners, update_period=2,
-                                  life_cycles=args.iterations).live()
+    maze = mazerunner.Environment(
+        agents=[Walker(i, interface)
+                for i, interface in enumerate(ROBOT_INTERFACES)],
+        update_period=2,
+        life_cycles=ITERATIONS).live()
+
     print('Bye.')

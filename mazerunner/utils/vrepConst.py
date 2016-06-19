@@ -1,6 +1,6 @@
 # This file is part of the REMOTE API
 # 
-# Copyright 2006-2015 Coppelia Robotics GmbH. All rights reserved. 
+# Copyright 2006-2016 Coppelia Robotics GmbH. All rights reserved. 
 # marc@coppeliarobotics.com
 # www.coppeliarobotics.com
 # 
@@ -24,7 +24,7 @@
 # along with the REMOTE API.  If not, see <http://www.gnu.org/licenses/>.
 # -------------------------------------------------------------------
 #
-# This file was automatically created for V-REP release V3.2.1 on May 3rd 2015
+# This file was automatically created for V-REP release V3.3.1 Rev1 on May 17th 2016
 
 #constants
 #Scene object types. Values are serialized
@@ -278,8 +278,10 @@ sim_script_call_error				=16
  # Script types (serialized!) 
 sim_scripttype_mainscript   =0
 sim_scripttype_childscript  =1
-sim_scripttype_pluginscript =2
-sim_scripttype_threaded     =0x00f0			# Combine with one of above's type values 
+sim_scripttype_jointctrlcallback  =4
+sim_scripttype_contactcallback  =5
+sim_scripttype_customizationscript  =6
+sim_scripttype_generalcallback  =7
 
 # API call error messages 
 sim_api_errormessage_ignore	=0	# does not memorize nor output errors 
@@ -471,6 +473,7 @@ sim_boolparam_exit_request						=41
 sim_boolparam_play_toolbarbutton_enabled		=42
 sim_boolparam_pause_toolbarbutton_enabled		=43
 sim_boolparam_stop_toolbarbutton_enabled		=44
+sim_boolparam_waiting_for_trigger				=45
 
 
 # Integer parameters 
@@ -509,7 +512,8 @@ sim_intparam_mouse_buttons          =31
 sim_intparam_dynamic_warning_disabled_mask =32
 sim_intparam_simulation_warning_disabled_mask =33
 sim_intparam_scene_index            =34
-sim_intparam_motionplanning_seed	=35
+sim_intparam_motionplanning_seed    =35
+sim_intparam_speedmodifier          =36
 
 # Float parameters 
 sim_floatparam_rand=0 # random value (0.0-1.0) 
@@ -619,6 +623,7 @@ simx_cmdheaderoffset_reserved       =25	# 1 byte. Not yet used
 
 # Regular operation modes 
 simx_opmode_oneshot				=0x000000 # sends command as one chunk. Reply will also come as one chunk. Doesn't wait for the reply. 
+simx_opmode_blocking			=0x010000 # sends command as one chunk. Reply will also come as one chunk. Waits for the reply (_REPLY_WAIT_TIMEOUT_IN_MS is the timeout). 
 simx_opmode_oneshot_wait		=0x010000 # sends command as one chunk. Reply will also come as one chunk. Waits for the reply (_REPLY_WAIT_TIMEOUT_IN_MS is the timeout). 
 simx_opmode_continuous			=0x020000  
 simx_opmode_streaming			=0x020000 # sends command as one chunk. Command will be stored on the server and always executed 

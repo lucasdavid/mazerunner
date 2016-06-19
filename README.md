@@ -14,15 +14,8 @@ First, start `Choregraph`:
 /opt/Aldebaran\ Robotics/Choregraphe\ Suite\ 2.1/bin/naoqi-bin -p 5000
 ```
 
-Then start the simulation on V-REP.
-
-Finally, run the linker:
-```shell
-cd mazerunner/naovreplinker/
-python2 single_nao_contro.py
-```
-
-Open a second terminal and run one of the examples:
+Then start one the scenes in `scenes` folder the simulation on V-REP.
+Finally, run one of the examples:
 ```shell
 python mazerunner/examples/simple_walker.py
 ```
