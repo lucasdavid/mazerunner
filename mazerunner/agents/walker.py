@@ -6,8 +6,6 @@ License: MIT (c) 2016
 """
 import logging
 
-import time
-
 from . import base
 
 logger = logging.getLogger('mazerunner')
