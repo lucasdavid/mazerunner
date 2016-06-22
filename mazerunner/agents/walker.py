@@ -17,7 +17,7 @@ class Walker(base.RoboticAgent):
     An robotic agent that walks randomly, avoiding walls.
     """
 
-    speed = 1
+    speed = 0.3 #old speed=1.0
 
     def idle(self):
         self.motion.moveToward(self.speed, 0, 0)
