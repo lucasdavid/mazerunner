@@ -1,12 +1,13 @@
-"""Reinforcement Learning functions
+"""QLearning Algorithm.
 
-Authors: Karina  --- 
-		 Agnaldo --- agnaldo.esmael@ic.unicamp.br
+Authors: Karina  --- <karina.bogdan@gmail.com>
+         Agnaldo --- <agnaldo.esmael@ic.unicamp.br>
+
+License: MIT (c) 2016
 
 """
-import numpy as np
-import random
 import math
+import numpy as np
 
 
 # A classe QLearning -- determina as acoes do robo NAO
@@ -24,8 +25,8 @@ class QLearning(object):
         self.numAction = 4
 
         # parameters for q-learning rule
-        self.alpha   = 0.2   #learning rate
-        self.gamma   = 0.75  #discount factor
+        self.alpha = 0.2  # learning rate
+        self.gamma = 0.75  # discount factor
 
         self.epsilon = 0.2  # 20 cm -- Usado para determinar se o NAO mudou significativamente de posicao
 
@@ -40,24 +41,24 @@ class QLearning(object):
         # reward function parameters
         self.ireward_collision = -100
         self.ireward_backwards = 1
-        self.ireward_forward   = 1
+        self.ireward_forward = 1
         self.ireward_turnright = 1
-        self.ireward_turnleft  = 1
+        self.ireward_turnleft = 1
         self.ireward_closetothegoal = 10
 
         # environment actions:
-        self.action_forward   = 0
+        self.action_forward = 0
         self.action_turnright = 1
-        self.action_turnleft  = 2
+        self.action_turnleft = 2
         self.action_backwards = 3
 
         # environment states
-        self.state_close       = 0
-        self.state_faraway     = 1
-        self.state_collision   = 2
+        self.state_close = 0
+        self.state_faraway = 1
+        self.state_collision = 2
         self.state_closetogoal = 10
-        self.state_sameplace   = 11
-        self.state_movedaway   = 12
+        self.state_sameplace = 11
+        self.state_movedaway = 12
 
         # Q table
         self.random_state = np.random.RandomState(0)
@@ -65,10 +66,10 @@ class QLearning(object):
 
         # current status of NAO
         self.action = None
-        self.distNAOtoObj = percept[0]  # recebe a distancia q o NAO esta do objetivo
+        self.distNAOtoObj = percept[
+            0]  # recebe a distancia q o NAO esta do objetivo
         self.state_binary = self.stateDiscretization(percept)
-        self.state_int    = int(self.state_binary, 2)  # binay -> int
-
+        self.state_int = int(self.state_binary, 2)  # binay -> int
 
     def initQ(self):
         mat = np.zeros((self.numStates, self.numAction))
@@ -87,12 +88,16 @@ class QLearning(object):
         newS_binary = self.stateDiscretization(percept)
         newS_int = int(newS_binary, 2)  # binary --> int
 
-        self.Q[self.state_int][self.action] = (1 - self.alpha) * (self.Q[self.state_int][self.action]) + self.alpha * (r + self.gamma * (np.max(self.Q[newS_int])))
-        print('current_action=', self.action, ', tabelaQold=', self.Q[self.state_int])
+        self.Q[self.state_int][self.action] = (1 - self.alpha) * (
+            self.Q[self.state_int][self.action]) + self.alpha * (
+            r + self.gamma * (np.max(self.Q[newS_int])))
+        print(
+            'current_action=', self.action, ', tabelaQold=',
+            self.Q[self.state_int])
         print('current_action=', self.action, ', tabelaQnew=', self.Q[newS_int])
 
         # atualizacoes
-        self.state_int    = newS_int
+        self.state_int = newS_int
         self.state_binary = newS_binary
         self.distNAOtoObj = percept[0]
         return
@@ -101,13 +106,18 @@ class QLearning(object):
     def stateDiscretization(self, p):
         s = ''
         deltaDist = self.distNAOtoObj - p[0]
-        s = s + self.auxStateDisc(deltaDist, (-1) * self.epsilon, self.epsilon)  # s=xx -> 00-aproximou, 01-manteve, 10-recuou
-        s = s + self.auxStateDisc(p[1], self.fs_min_value, self.fs_max_value)  # s=xxyy  -> acrescimo: sonar da frente --> 00-longe, 01-perto, 10-colisao
-        s = s + self.auxStateDisc(p[2], self.fs_min_value, self.fs_max_value)  # s=xxyyzz  -> acrescimo: sonar de tras
-        s = s + self.auxStateDisc(p[3], self.ss_min_value, self.ss_max_value)  # s=xxyyzzdd  -> acrescimo: sonar direita
-        s = s + self.auxStateDisc(p[4], self.ss_min_value, self.ss_max_value)  # s=xxyyzzddee  -> acrescimo: sonar esquerda
+        s = s + self.auxStateDisc(deltaDist, (-1) * self.epsilon,
+                                  self.epsilon)  # s=xx -> 00-aproximou, 01-manteve, 10-recuou
+        s = s + self.auxStateDisc(p[1], self.fs_min_value,
+                                  self.fs_max_value)  # s=xxyy  -> acrescimo: sonar da frente --> 00-longe, 01-perto, 10-colisao
+        s = s + self.auxStateDisc(p[2], self.fs_min_value,
+                                  self.fs_max_value)  # s=xxyyzz  -> acrescimo: sonar de tras
+        s = s + self.auxStateDisc(p[3], self.ss_min_value,
+                                  self.ss_max_value)  # s=xxyyzzdd  -> acrescimo: sonar direita
+        s = s + self.auxStateDisc(p[4], self.ss_min_value,
+                                  self.ss_max_value)  # s=xxyyzzddee  -> acrescimo: sonar esquerda
 
-        print('s=',s)
+        print('s=', s)
         return s
 
     def auxStateDisc(self, value, minVal, maxVal):
@@ -169,7 +179,8 @@ class QLearning(object):
         size_list = len(state_list)
         index = 0
         while (index < size_list):
-            t_state = self.getTState(state_list[index], (False if index == 0 else True))
+            t_state = self.getTState(state_list[index],
+                                     (False if index == 0 else True))
 
             if (t_state == -1): print('[IREWARD] Translated state is incorrect')
 
@@ -194,10 +205,7 @@ class QLearning(object):
         return total_reward
 
 
-
-
-
-#exemplo de como seria a execucao
+# exemplo de como seria a execucao
 percept = [2.0, 0.6, 0.5, 0.4, 0.4]
 objeto = QLearning(percept)
 
@@ -211,5 +219,3 @@ for i in range(5):
     percept[0] -= 0.1
 
     objeto.setState(percept)
-
-

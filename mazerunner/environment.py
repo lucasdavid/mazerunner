@@ -40,6 +40,8 @@ class Environment:
         self.update_period = update_period
         self.life_cycles = life_cycles
 
+        self.tags_ = dict()
+
         self.cycle_ = -1
         self.link_ = None
 
@@ -65,7 +67,7 @@ class Environment:
                     str(self.life_cycles or 'infinite'))
 
         self.cycle_ = 0
-        self.initiate_agents()
+        self._initialize()
 
         try:
             while self.is_alive:
@@ -85,16 +87,16 @@ class Environment:
 
         return self
 
-    def initiate_agents(self):
+    def _initialize(self):
         logger.info('establishing link between V-REP and NAO...')
 
         vrep.simxFinish(-1)
-        link = vrep.simxStart('127.0.0.1', 19999, True, True, 5000, 5)
+        self.link_ = vrep.simxStart('127.0.0.1', 19999, True, True, 5000, 5)
 
-        assert link != -1, 'Could not connect to V-REP API.'
+        assert self.link_ != -1, 'Could not connect to V-REP API.'
 
         for agent in self.agents:
-            agent.start(link)
+            agent.start(self.link_)
 
         logger.info('link established')
 

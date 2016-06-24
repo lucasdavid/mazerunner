@@ -1,4 +1,4 @@
-"""Mazerunner Components.
+"""MazeRunner Components.
 
 Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
@@ -6,3 +6,4 @@ License: MIT (c) 2016
 """
 from .camera import Camera
 from .proximity_sensor import ProximitySensor
+from .tag import Tag

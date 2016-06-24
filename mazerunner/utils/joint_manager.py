@@ -7,9 +7,8 @@ License: MIT (c) 2016
 
 """
 import logging
-from threading import Thread
-
 import time
+from threading import Thread
 
 from . import vrep
 
@@ -63,7 +62,8 @@ class JointManager(Thread):
         ('Revolute_joint2', 25), ('Revolute_joint3', 25),
     )
 
-    SYNC_EVERY = .1
+    SYNC_PERIOD = .01
+    MAX_SYNC_PERIOD = .1
 
     def __init__(self, link, motion, identity=''):
         super(JointManager, self).__init__()
@@ -103,7 +103,8 @@ class JointManager(Thread):
                 vrep.simxSetJointTargetPosition(self.link,
                                                 self.body_[body_id], angle,
                                                 vrep.simx_opmode_streaming)
-            time.sleep(self.SYNC_EVERY)
+            time.sleep(self.SYNC_PERIOD)
+
         if not self.is_connected:
             logger.warning('the connection to V-REP was lost')
 
