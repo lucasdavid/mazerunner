@@ -10,17 +10,19 @@ import math
 class QLearning(goalPosition, percept):
 #goalPosition eh um vetor de duas posicoes:x,y (tipo float)
 #percept eh um vetor de 5 posicoes:x_atual_NAO, y_atual_NAO, sonar_frente, sonar_atras, sonar_ombroD, sonarOmbroE (tipo float)
-	self.gp = goalPosition
-	self.numStates = 1024
-	self.numAction = 4
-	self.alpha = 0.2
-	self.gamma = 0.75
-	self.atualA = 0		# inicia com um valor qq -- vai ser atualiza na primeira chamada de getAction
-	self.E = 0.2		# 20 cm -- Usado para determinar se o NAO mudou significativamente de posicao
-	self.atualS_binary = self.stateDiscretization(percept)
-	self.atualS = int(self.atualS_binary, 2)  # binay -> int
-	self.oldDist = getDist(percept[0],percept[1])
-	self.Q = self.initQ()
+	
+	def __init__(self):
+		self.gp = goalPosition
+		self.numStates = 1024
+		self.numAction = 4
+		self.alpha = 0.2
+		self.gamma = 0.75
+		self.atualA = 0		# inicia com um valor qq -- vai ser atualiza na primeira chamada de getAction
+		self.E = 0.2		# 20 cm -- Usado para determinar se o NAO mudou significativamente de posicao
+		self.atualS_binary = self.stateDiscretization(percept)
+		self.atualS = int(self.atualS_binary, 2)  # binay -> int
+		self.oldDist = getDist(percept[0],percept[1])
+		self.Q = self.initQ()
 
 	def initQ(self):
 		mat = np.zeros((self.numStates,self.numAction))
