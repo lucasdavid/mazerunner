@@ -4,12 +4,14 @@ Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
 """
-import numpy as np
+
+import logging
 
 from . import Walker
+from ..constants import STATES
 from ..learning import QLearning
 
-from ..constants import STATES
+logger = logging.getLogger('mazerunner')
 
 
 class Navigator(Walker):
@@ -28,7 +30,7 @@ class Navigator(Walker):
         self.learning_model.setState(self.percept_)
         action = self.learning_model.getAction()
 
-        print('action=', action)
+        logger.info('action to be performed: %s', action)
 
         if all(s.imminent_collision for s in
                self.sensors['proximity'].values()):
@@ -37,8 +39,7 @@ class Navigator(Walker):
             self.state_ = STATES.stuck
 
         else:
-            instruction = self.INSTRUCTIONS_MAP[action]
-            self.motion.moveTo(*action)
+            self.motion.moveTo(*self.INSTRUCTIONS_MAP[action])
             self.state_ = STATES.moving
 
         return self
