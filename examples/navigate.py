@@ -1,4 +1,6 @@
-"""Simple Walker Example.
+"""Navigate.
+
+Navigate through the house looking for the kitchen.
 
 Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
@@ -13,19 +15,16 @@ logging.basicConfig()
 logger = logging.getLogger('mazerunner')
 logger.setLevel(logging.DEBUG)
 
-ROBOT_INTERFACES = [
-    ('127.0.0.1', 5000),
-]
-
+INTERFACE = ('127.0.0.1', 5000)
+UPDATE_PERIOD = 2
 ITERATIONS = None
 
 if __name__ == "__main__":
     print(__doc__)
 
-    maze = mazerunner.Environment(
-        agents=[Navigator(i, interface)
-                for i, interface in enumerate(ROBOT_INTERFACES)],
-        update_period=2,
-        life_cycles=ITERATIONS).live()
+    mazerunner.Environment(
+    	agents=[Navigator(0, interface=INTERFACE)],
+    	update_period=UPDATE_PERIOD,
+    	life_cycles=ITERATIONS).live()
 
     print('Bye.')

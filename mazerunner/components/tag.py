@@ -19,14 +19,14 @@ class Tag(Component):
     def __init__(self, link, component):
         super(Tag, self).__init__(link=link, component=component)
 
-        errors, position = vrep.simxGetObjectPosition(
+        errors, self.position = vrep.simxGetObjectPosition(
             self.adapter.link, self.adapter.handler, -1,
             vrep.simx_opmode_streaming)
 
-    @property
-    def position(self):
+    def read(self):
         errors, position = vrep.simxGetObjectPosition(
             self.adapter.link, self.adapter.handler, -1,
             vrep.simx_opmode_buffer)
 
-        return None if errors else position
+        self.position = None if errors else position
+        return self

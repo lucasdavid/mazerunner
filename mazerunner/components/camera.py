@@ -19,12 +19,12 @@ class Camera(Sensor):
             self.adapter.link, self.adapter.handler, 0,
             vrep.simx_opmode_streaming)
 
-        self.last_read = image
+        self.image = image
 
     def read(self):
         errors, resolution, image = vrep.simxGetVisionSensorImage(
             self.adapter.link, self.adapter.handler, 0,
             vrep.simx_opmode_buffer)
 
-        self.last_read = image
-        return image
+        self.image = image
+        return self

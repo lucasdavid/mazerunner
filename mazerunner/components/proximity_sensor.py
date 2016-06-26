@@ -19,7 +19,10 @@ class ProximitySensor(Sensor):
     """Proximity Sensor.
 
     An abstraction for the proximity sensor in V-REP.
+    
     """
+
+    IMMINENT_COLLISION_THRESHOLD = 1
 
     def __init__(self, link, component):
         super(ProximitySensor, self).__init__(link, component=component)
@@ -38,18 +41,28 @@ class ProximitySensor(Sensor):
         data = vrep.simxReadProximitySensor(
             self.adapter.link, self.adapter.handler,
             vrep.simx_opmode_buffer)
-        self.last_read = None if data[0] else data[1:]
-        return self.last_read
+        errors = data[0]
+
+        self.last_read = None if errors else data[1:]
+        return self
 
     @property
     def imminent_collision(self):
-        """Checks If This Sensor is In Imminent Collision.
+        """Checks if this sensor is in an imminent collision,
+        based on a pre-defined threshold.
 
         :return bool: True, if it is about to collide. False, otherwise.
         """
-        return self.last_read and self.last_read[0]
+        return self.distance < self.IMMINENT_COLLISION_THRESHOLD
 
     @property
     def distance(self):
+        """Retrieve the distance between the base of the sensor's 
+        position frame and the detected point in space.
+
+        If last reading didn't detect any collision, returns the overflowing
+        value 100.
+
+        """
         detected, point = self.last_read[:2]
         return np.linalg.norm(point) if detected else 100

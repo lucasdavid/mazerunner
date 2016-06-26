@@ -4,10 +4,11 @@ Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
 """
-import numpy as np
 import logging
+import numpy as np
 
 from . import base
+from ..constants import ACTIONS, STATES
 
 logger = logging.getLogger('mazerunner')
 
@@ -19,43 +20,56 @@ class Walker(base.RoboticAgent):
     """
 
     STRIDE = 1.0
+    SPEED = .7
+
+    INSTRUCTIONS_MAP = {
+        ACTIONS.forward: (STRIDE, 0, 0),
+        ACTIONS.backward: (-STRIDE, 0, 0),
+        ACTIONS.clockwise: (0, 0, -np.pi/2),
+        ACTIONS.cclockwise: (0, 0, np.pi/2),
+    }
 
     def idle(self):
         """Initiates the robot movement."""
-        self.state_ = self.States.moving
+        self.state_ = STATES.moving
 
     def moving(self):
-        """Move the robot's body , preventing collisions on its way out.
-        If there're obstacles on the way, rotates appropriately.
+        """Move the robot's body forward until an obstacle is detected."""
+        if self.sensors['proximity']['front'].imminent_collision:
+            self.motion.stopMove()
+            self.posture.goToPosture('Stand', self.SPEED)
+            self.state_ = STATES.thinking
 
-        """
+        elif not self.motion.moveIsActive():
+            # Walker will always keep moving forward,
+            # if no obstacles are found.
+            forward = self.INSTRUCTIONS_MAP[ACTIONS.forward]
+            self.motion.post.moveTo(*forward)
+
+    def thinking(self):
+        """Deliberate to avoid obstacles on the path."""
         if self.motion.moveIsActive():
-            # Doesn't do anything until the movement is complete. Collision
-            # checking isn't necessary, as movements are only started when the
-            # sensors indicate a free path.
+            # Maneuver occurring. Let's finish it
+            # before taking any other measure.
             pass
 
         elif not self.sensors['proximity']['front'].imminent_collision:
-            # Walker will always keep moving forward,
-            # if no obstacles are found.
-            self.motion.post.moveTo(self.STRIDE, 0, 0)
+            # Goes back to moving state.
+            self.state_ = STATES.moving
+
+        elif all(s.imminent_collision for s in
+                 self.sensors['proximity'].values()):
+            # There's nothing left to be done, only flag this is a dead-end.
+            self.state_ = STATES.stuck
 
         else:
-            self.motion.stopMove()
-            self.posture.goToPosture('Stand', 1)
+            for sensor, maneuver in (('left', np.pi / 2),
+                                     ('right', -np.pi / 2),
+                                     ('back', np.pi)):
+                # Find which direction doesn't have 
+                # any obstacles and rotate to face it.
+                if not self.sensors['proximity'][sensor].imminent_collision:
+                    self.motion.post.moveTo(0, 0, maneuver)
+                    break
 
-            if not self.sensors['proximity']['left'].imminent_collision:
-                # Rotate to the left.
-                self.motion.post.moveTo(0, 0, np.pi / 2)
-
-            elif not self.sensors['proximity']['right'].imminent_collision:
-                # Rotate to the right.
-                self.motion.post.moveTo(0, 0, -np.pi / 2)
-
-            elif not self.sensors['proximity']['back'].imminent_collision:
-                # Go back.
-                self.motion.post.moveTo(0, 0, -np.pi)
-
-            else:
-                # There's nothing to do. Flag this is a dead-end.
-                self.state_ = self.States.stuck
+        return self
