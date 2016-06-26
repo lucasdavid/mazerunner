@@ -9,26 +9,20 @@ License: MIT (c) 2016
 import math
 import numpy as np
 
-from ..constants import ACTIONS
 
+# A classe QLearning -- determina as acoes do robo NAO
+# Actions = {0,1,2,3}, onde 0=ir para frente, 1=ir para tras, 2=vire aa Dir, 3=vire aa Esq.
+# percept eh um vetor float de 5 posicoes com as seguintes distancias em metros:
+#   percept[0]= distancia(NAO, objetivo)
+#   percept[1]= distancia captada pelo sonar_frente
+#   percept[2]= distancia captada pelo sonar_atras
+#   percept[3]= distancia captada pelo sonar_ombroDir
+#   percept[4]= distancia captada pelo sonar_ombroEsq
 
 class QLearning(object):
-    """QLearning.
-
-    Determines a model which describes the actions taken by a RoboticAgent.
-
-    # Actions = {0,1,2,3}, onde 0=ir para frente, 1=ir para tras, 2=vire aa Dir, 3=vire aa Esq.
-    # percept eh um vetor float de 5 posicoes com as seguintes distancias em metros:
-    #   percept[0]= distancia(NAO, objetivo)
-    #   percept[1]= distancia captada pelo sonar_frente
-    #   percept[2]= distancia captada pelo sonar_atras
-    #   percept[3]= distancia captada pelo sonar_ombroDir
-    #   percept[4]= distancia captada pelo sonar_ombroEsq
-    """
-
-    def __init__(self, percept, n_states=1024):
-        self.n_states = n_states
-        self.n_actions = len(ACTIONS)
+    def __init__(self, percept):
+        self.numStates = 1024
+        self.numAction = 4
 
         # parameters for q-learning rule
         self.alpha = 0.2  # learning rate
@@ -68,14 +62,19 @@ class QLearning(object):
 
         # Q table
         self.random_state = np.random.RandomState(0)
-        self.Q = self.random_state.rand(self.n_states, self.n_actions)
+        self.Q = self.initQ()
 
         # current status of NAO
         self.action = None
         self.distNAOtoObj = percept[
             0]  # recebe a distancia q o NAO esta do objetivo
-        self.state_binary = self.discretize(percept)
+        self.state_binary = self.stateDiscretization(percept)
         self.state_int = int(self.state_binary, 2)  # binay -> int
+
+    def initQ(self):
+        mat = np.zeros((self.numStates, self.numAction))
+        mat = self.random_state.rand(self.numStates, self.numAction)
+        return mat
 
     # Requisicao de uma nova acao
     def getAction(self):
@@ -86,7 +85,7 @@ class QLearning(object):
     def setState(self, percept):
         r = self.reward(self.state_binary, self.action, self.distNAOtoObj)
 
-        newS_binary = self.discretize(percept)
+        newS_binary = self.stateDiscretization(percept)
         newS_int = int(newS_binary, 2)  # binary --> int
 
         self.Q[self.state_int][self.action] = (1 - self.alpha) * (
@@ -103,8 +102,8 @@ class QLearning(object):
         self.distNAOtoObj = percept[0]
         return
 
-    def discretize(self, p):
-        # funcao para discretizar o estado correspondente aa 'percept' --- gera uma string de bits 0s e 1s
+    # funcao para discretizar o estado correspondente aa 'percept' --- gera uma string de bits 0s e 1s
+    def stateDiscretization(self, p):
         s = ''
         deltaDist = self.distNAOtoObj - p[0]
         s = s + self.auxStateDisc(deltaDist, (-1) * self.epsilon,
@@ -123,9 +122,9 @@ class QLearning(object):
 
     def auxStateDisc(self, value, minVal, maxVal):
         b = '00'
-        if value < minVal:
+        if (value < minVal):
             b = '10'
-        elif minVal <= value <= maxVal:
+        elif (value >= minVal and value <= maxVal):
             b = '01'
         return b
 
@@ -204,3 +203,19 @@ class QLearning(object):
             total_reward += self.ireward_turnright
 
         return total_reward
+
+
+# exemplo de como seria a execucao
+percept = [2.0, 0.6, 0.5, 0.4, 0.4]
+objeto = QLearning(percept)
+
+# TODO definir se chegou no objetivo ou alcancou um numero maximo de iteracoes
+for i in range(5):
+    action = objeto.getAction()
+    print('action=', action)
+
+    # so exemplo mudando a distancia do objetivo e o sensor da frente
+    percept[1] -= 0.1
+    percept[0] -= 0.1
+
+    objeto.setState(percept)
