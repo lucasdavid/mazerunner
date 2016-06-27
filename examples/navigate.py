@@ -23,8 +23,8 @@ if __name__ == "__main__":
     print(__doc__)
 
     mazerunner.Environment(
-    	agents=[Navigator(0, interface=INTERFACE)],
-    	update_period=UPDATE_PERIOD,
-    	life_cycles=ITERATIONS).live()
+        agents=[Navigator(0, interface=INTERFACE)],
+        update_period=UPDATE_PERIOD,
+        life_cycles=ITERATIONS).live()
 
     print('Bye.')

@@ -21,9 +21,13 @@ logger = logging.getLogger('mazerunner')
 class Agent(object):
     """Agent Base."""
 
+    def __init__(self):
+        self.cycle_ = 0
+
     def update(self):
         self.perceive()
         self.act()
+        self.cycle_ += 1
 
     def perceive(self):
         raise NotImplementedError
@@ -51,6 +55,8 @@ class RoboticAgent(Agent):
                  random_state=None):
         if len(interface) != 2:
             raise ValueError('Invalid interface: %s' % str(interface))
+
+        super(RoboticAgent, self).__init__()
 
         self.identity = identity
         self.interface = interface
@@ -86,16 +92,20 @@ class RoboticAgent(Agent):
                 'floor': components.Camera(link, component='NAO_vision2'),
             },
             'proximity': {
-                'front': components.ProximitySensor(link, component='Proximity_sensor1'),
-                'left': components.ProximitySensor(link, component='Proximity_sensor2'),
-                'right': components.ProximitySensor(link, component='Proximity_sensor3'),
-                'back': components.ProximitySensor(link, component='Proximity_sensor4'),
+                'front': components.ProximitySensor(link,
+                                                    component='Proximity_sensor1'),
+                'left': components.ProximitySensor(link,
+                                                   component='Proximity_sensor2'),
+                'right': components.ProximitySensor(link,
+                                                    component='Proximity_sensor3'),
+                'back': components.ProximitySensor(link,
+                                                   component='Proximity_sensor4'),
             },
-            'position': {
-                'start': components.Tag(link, component='tag1'),
-                'goal': components.Tag(link, component='tag2'),
-                'self': components.Tag(link, component='tag3')
-            }
+            'position': [
+                components.Tag(link, component='tag1'),
+                components.Tag(link, component='tag2'),
+                components.Tag(link, component='tag3')
+            ]
         }
 
         self.state_ = STATES.idle
@@ -106,12 +116,16 @@ class RoboticAgent(Agent):
 
         # Get starting point, goal and robot positions. Then maps those to
         # numpy arrays first so norm and subtraction work properly.
-        start, goal, me = map(np.array, self.sensors['position'].values())
+
+        start, goal, me = (np.array(s.position)
+                           for s in self.sensors['position'])
 
         # Assemble perceived state structure.
         self.percept_ = ([np.linalg.norm(goal - me)] +
                          [s.read().distance
-                         for s in self.sensors['proximity'].values()])
+                          for s in self.sensors['proximity'].values()])
+
+        print('percept: %s' % self.percept_)
         return self
 
     def act(self):
@@ -127,7 +141,11 @@ class RoboticAgent(Agent):
         self.motion.stopMove()
         self.posture.goToPosture('Stand', self.SPEED)
 
-        raise NotImplementedError
+        tag1_position = self.sensors['position'][0].position
+
+        utils.vrep.simxSetObjectPosition(
+            self.adapter.link, self.adapter.handler, -1, tag1_position,
+            utils.vrep.simx_opmode_oneshot)
 
     def dead(self):
         """Doesn't do anything."""
@@ -142,5 +160,6 @@ class RoboticAgent(Agent):
         self.joint_manager_.join()
 
         self.state_ = STATES.dead
+        self.cycle_ = 0
 
         return self
