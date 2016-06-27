@@ -8,7 +8,7 @@ License: MIT (c) 2016
 """
 import math
 import numpy as np
-
+from mazerunner.constants import ACTIONS
 
 # A classe QLearning -- determina as acoes do robo NAO
 # Actions = {0,1,2,3}, onde 0=ir para frente, 1=ir para tras, 2=vire aa Dir, 3=vire aa Esq.
@@ -20,7 +20,7 @@ import numpy as np
 #   percept[4]= distancia captada pelo sonar_ombroEsq
 
 class QLearning(object):
-    def __init__(self, percept):
+    def __init__(self):
         self.numStates = 1024
         self.numAction = 4
 
@@ -41,16 +41,16 @@ class QLearning(object):
         # reward function parameters
         self.ireward_collision = -100
         self.ireward_backwards = 1
-        self.ireward_forward = 1
+        self.ireward_forward   = 1
         self.ireward_turnright = 1
-        self.ireward_turnleft = 1
+        self.ireward_turnleft  = 1
         self.ireward_closetothegoal = 10
 
         # environment actions:
-        self.action_forward = 0
-        self.action_turnright = 1
-        self.action_turnleft = 2
-        self.action_backwards = 3
+        # self.action_forward   = 0
+        # self.action_backwards = 1
+        # self.action_turnright = 2
+        # self.action_turnleft  = 3
 
         # environment states
         self.state_close = 0
@@ -64,17 +64,20 @@ class QLearning(object):
         self.random_state = np.random.RandomState(0)
         self.Q = self.initQ()
 
-        # current status of NAO
-        self.action = None
-        self.distNAOtoObj = percept[
-            0]  # recebe a distancia q o NAO esta do objetivo
-        self.state_binary = self.stateDiscretization(percept)
-        self.state_int = int(self.state_binary, 2)  # binay -> int
 
     def initQ(self):
         mat = np.zeros((self.numStates, self.numAction))
         mat = self.random_state.rand(self.numStates, self.numAction)
         return mat
+
+
+    # initiates the q-learning algorithm with an initial percept
+    def startLearning(self, percept):
+        # current status of NAO
+        self.action = None
+        self.distNAOtoObj = percept[0]  # recebe a distancia q o NAO esta do objetivo
+        self.state_binary = self.stateDiscretization(percept)
+        self.state_int = int(self.state_binary, 2)  # binay -> int
 
     # Requisicao de uma nova acao
     def getAction(self):
@@ -91,9 +94,7 @@ class QLearning(object):
         self.Q[self.state_int][self.action] = (1 - self.alpha) * (
             self.Q[self.state_int][self.action]) + self.alpha * (
             r + self.gamma * (np.max(self.Q[newS_int])))
-        print(
-            'current_action=', self.action, ', tabelaQold=',
-            self.Q[self.state_int])
+        print('current_action=', self.action, ', tabelaQold=', self.Q[self.state_int])
         print('current_action=', self.action, ', tabelaQnew=', self.Q[newS_int])
 
         # atualizacoes
@@ -106,16 +107,11 @@ class QLearning(object):
     def stateDiscretization(self, p):
         s = ''
         deltaDist = self.distNAOtoObj - p[0]
-        s = s + self.auxStateDisc(deltaDist, (-1) * self.epsilon,
-                                  self.epsilon)  # s=xx -> 00-aproximou, 01-manteve, 10-recuou
-        s = s + self.auxStateDisc(p[1], self.fs_min_value,
-                                  self.fs_max_value)  # s=xxyy  -> acrescimo: sonar da frente --> 00-longe, 01-perto, 10-colisao
-        s = s + self.auxStateDisc(p[2], self.fs_min_value,
-                                  self.fs_max_value)  # s=xxyyzz  -> acrescimo: sonar de tras
-        s = s + self.auxStateDisc(p[3], self.ss_min_value,
-                                  self.ss_max_value)  # s=xxyyzzdd  -> acrescimo: sonar direita
-        s = s + self.auxStateDisc(p[4], self.ss_min_value,
-                                  self.ss_max_value)  # s=xxyyzzddee  -> acrescimo: sonar esquerda
+        s = s + self.auxStateDisc(deltaDist, (-1) * self.epsilon, self.epsilon)  # s=xx -> 00-aproximou, 01-manteve, 10-recuou
+        s = s + self.auxStateDisc(p[1], self.fs_min_value, self.fs_max_value)  # s=xxyy  -> acrescimo: sonar da frente --> 00-longe, 01-perto, 10-colisao
+        s = s + self.auxStateDisc(p[2], self.fs_min_value, self.fs_max_value)  # s=xxyyzz  -> acrescimo: sonar de tras
+        s = s + self.auxStateDisc(p[3], self.ss_min_value, self.ss_max_value)  # s=xxyyzzdd  -> acrescimo: sonar direita
+        s = s + self.auxStateDisc(p[4], self.ss_min_value, self.ss_max_value)  # s=xxyyzzddee  -> acrescimo: sonar esquerda
 
         print('s=', s)
         return s
@@ -206,16 +202,22 @@ class QLearning(object):
 
 
 # exemplo de como seria a execucao
-percept = [2.0, 0.6, 0.5, 0.4, 0.4]
-objeto = QLearning(percept)
-
-# TODO definir se chegou no objetivo ou alcancou um numero maximo de iteracoes
-for i in range(5):
-    action = objeto.getAction()
-    print('action=', action)
-
-    # so exemplo mudando a distancia do objetivo e o sensor da frente
-    percept[1] -= 0.1
-    percept[0] -= 0.1
-
-    objeto.setState(percept)
+# if action == ACTIONS.forward: # Do something...
+# if action == ACTIONS.backward: # Do another thing...
+print('pra frente essa coisa', ACTIONS.forward)
+x = ACTIONS.forward
+print(x)
+# percept = [2.0, 0.6, 0.5, 0.4, 0.4]
+# objeto = QLearning()
+#
+# # TODO definir se chegou no objetivo ou alcancou um numero maximo de iteracoes
+# objeto.startLearning(percept)
+# for i in range(5):
+#     action = objeto.getAction()
+#     print('action=', action)
+#
+#     # so exemplo mudando a distancia do objetivo e o sensor da frente
+#     percept[1] -= 0.1
+#     percept[0] -= 0.1
+#
+#     objeto.setState(percept)
