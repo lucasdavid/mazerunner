@@ -8,7 +8,7 @@ import logging
 import numpy as np
 
 from . import base
-from ..constants import ACTIONS, STATES
+from ..constants import Actions, STATES
 
 logger = logging.getLogger('mazerunner')
 
@@ -23,10 +23,10 @@ class Walker(base.RoboticAgent):
     SPEED = .7
 
     INSTRUCTIONS_MAP = {
-        ACTIONS.forward: (STRIDE, 0, 0),
-        ACTIONS.backward: (-STRIDE, 0, 0),
-        ACTIONS.clockwise: (0, 0, -np.pi/2),
-        ACTIONS.cclockwise: (0, 0, np.pi/2),
+        Actions.FORWARD: (STRIDE, 0, 0),
+        Actions.BACKWARD: (-STRIDE, 0, 0),
+        Actions.CLOCKWISE: (0, 0, -np.pi / 2),
+        Actions.CCLOCKWISE: (0, 0, np.pi / 2),
     }
 
     def idle(self):
@@ -43,7 +43,7 @@ class Walker(base.RoboticAgent):
         elif not self.motion.moveIsActive():
             # Walker will always keep moving forward,
             # if no obstacles are found.
-            forward = self.INSTRUCTIONS_MAP[ACTIONS.forward]
+            forward = self.INSTRUCTIONS_MAP[Actions.FORWARD]
             self.motion.post.moveTo(*forward)
 
     def thinking(self):

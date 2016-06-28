@@ -4,12 +4,11 @@ Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
 """
-
 import logging
 
 from . import Walker
 from .. import constants, learning
-from ..constants import STATES, ACTION_SELECTION
+from ..constants import STATES, Actions
 
 logger = logging.getLogger('mazerunner')
 
@@ -17,25 +16,21 @@ logger = logging.getLogger('mazerunner')
 class Navigator(Walker):
     """Navigator Agent."""
 
-    STRIDE = .2
+    STRIDE = 1
+    SPEED = .7
 
     def __init__(self, identity='', interface=('127.0.0.1', 5000), link=None,
                  learning_model=None, random_state=None):
         super(Navigator, self).__init__(identity, interface, link, random_state)
 
         self.learning_model = learning_model or learning.QLearning(
-            gamma=.5,
-            action_selection=ACTION_SELECTION.e_greedy,
-            action_selection_epsilon=0.25)
+            alpha=0.1, gamma=.5, strategy='e-greedy', epsilon=.25)
 
     def idle(self):
         """Update the QLearning table, retrieve an action and check for
         dead-ends.
         """
-        self.learning_model.set_state(self.percept_)
-        action = self.learning_model.action
-
-        logger.info('action to be performed: %s', action)
+        action = self.learning_model.update(self.percept_).action
 
         if (all(s.imminent_collision for s in
                 self.sensors['proximity'].values()) or
@@ -45,9 +40,22 @@ class Navigator(Walker):
             self.state_ = STATES.stuck
 
         else:
-            # min(s.distance for tag, s in self.sensors['proximity'].items() if tag in ('front', 'back'))
-            logger.info('About to walk %s', self.INSTRUCTIONS_MAP[action])
-            self.motion.post.moveTo(*self.INSTRUCTIONS_MAP[action])
+            # Reduce step size if we are going against a close obstacle.
+            sensors = self.sensors['proximity']
+
+            sensor = (sensors['front'] if action == Actions.FORWARD else
+                      sensors['back'] if action == Actions.BACKWARD else
+                      None)
+
+            stride = (min(self.STRIDE, .9 * sensor.distance) if sensor else
+                      self.STRIDE)
+
+            move_to = ((stride, 0, 0) if action == Actions.FORWARD else
+                       (-stride, 0, 0) if action == Actions.BACKWARD else
+                       self.INSTRUCTIONS_MAP[action])
+
+            logger.info('walking: %s', move_to)
+            self.motion.post.moveTo(*move_to)
             self.state_ = STATES.moving
 
         return self

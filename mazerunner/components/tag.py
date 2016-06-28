@@ -8,6 +8,7 @@ License: MIT (c) 2016
 
 """
 import logging
+import numpy as np
 
 from .base import Component
 from ..utils import vrep
@@ -19,14 +20,16 @@ class Tag(Component):
     def __init__(self, link, component):
         super(Tag, self).__init__(link=link, component=component)
 
-        errors, self.position = vrep.simxGetObjectPosition(
+        errors, position = vrep.simxGetObjectPosition(
             self.adapter.link, self.adapter.handler, -1,
             vrep.simx_opmode_streaming)
+
+        self.position = np.array(3 * [np.inf] if errors else position)
 
     def read(self):
         errors, position = vrep.simxGetObjectPosition(
             self.adapter.link, self.adapter.handler, -1,
             vrep.simx_opmode_buffer)
 
-        self.position = None if errors else position
+        self.position = np.array(3 * [100] if errors else position)
         return self

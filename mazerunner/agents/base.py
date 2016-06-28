@@ -92,14 +92,10 @@ class RoboticAgent(Agent):
                 'floor': components.Camera(link, component='NAO_vision2'),
             },
             'proximity': {
-                'front': components.ProximitySensor(link,
-                                                    component='Proximity_sensor1'),
-                'left': components.ProximitySensor(link,
-                                                   component='Proximity_sensor2'),
-                'right': components.ProximitySensor(link,
-                                                    component='Proximity_sensor3'),
-                'back': components.ProximitySensor(link,
-                                                   component='Proximity_sensor4'),
+                'front': components.ProximitySensor(link, component='Proximity_sensor1'),
+                'left': components.ProximitySensor(link, component='Proximity_sensor2'),
+                'right': components.ProximitySensor(link, component='Proximity_sensor3'),
+                'back': components.ProximitySensor(link, component='Proximity_sensor4'),
             },
             'position': [
                 components.Tag(link, component='tag1'),
@@ -111,21 +107,16 @@ class RoboticAgent(Agent):
         self.state_ = STATES.idle
 
     def perceive(self):
-        for camera in self.sensors['vision'].values():
-            camera.read()
-
         # Get starting point, goal and robot positions. Then maps those to
         # numpy arrays first so norm and subtraction work properly.
-
-        start, goal, me = (np.array(s.position)
-                           for s in self.sensors['position'])
+        start, goal, me = (s.read().position for s in self.sensors['position'])
 
         # Assemble perceived state structure.
         self.percept_ = ([np.linalg.norm(goal - me)] +
                          [s.read().distance
                           for s in self.sensors['proximity'].values()])
 
-        print('percept: %s' % self.percept_)
+        logger.info('perception assembled: %s', self.percept_)
         return self
 
     def act(self):

@@ -59,7 +59,7 @@ class Environment:
     def live(self):
         """Makes This Environment Alive."""
         if self.is_alive:
-            logging.error('Attempted to start an already '
+            logger.error('Attempted to start an already '
                           'alive environment\'s life.')
             return self
 
