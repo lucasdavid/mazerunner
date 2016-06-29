@@ -8,6 +8,8 @@ License: MIT (c) 2016
 """
 from enum import Enum
 
+STATES = Enum('disabled', 'idle', 'moving', 'thinking', 'stuck', 'dead')
+
 
 class Actions(Enum):
     FORWARD = 0
@@ -24,8 +26,6 @@ class AgentStates(Enum):
     SOME_PLACE = 11
     MOVED_AWAY = 12
 
-
-STATES = Enum('disabled', 'idle', 'moving', 'thinking', 'stuck', 'dead')
 
 MAX_LEARNING_CYCLES = 3000
 IMMINENT_COLLISION_THRESHOLD = .2

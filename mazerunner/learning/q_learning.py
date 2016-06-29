@@ -26,14 +26,11 @@ def binary_code(value, min_value, max_value):
 
 
 def weight_for_distance(distance):
-    weight = 1 / math.exp(distance)
-    return weight
+    return 1 - distance / 28
 
 
-def weight_for_cycle(current_iteration):
-    return (1 if current_iteration is None else
-            (float(MAX_LEARNING_CYCLES - current_iteration)
-             / MAX_LEARNING_CYCLES))
+def weight_for_cycle(cycle):
+    return 1 - cycle / MAX_LEARNING_CYCLES
 
 
 def decode_state(state, sonar):
@@ -115,12 +112,13 @@ class QLearning(object):
     IMMEDIATE_REWARD = {
         Actions.FORWARD: 1,
         Actions.BACKWARD: 1,
-        Actions.CLOCKWISE: 0,
-        Actions.CCLOCKWISE: 0,
-        'collision': -100,
-        'closetothegoal': 100,
+        Actions.CLOCKWISE: 1,
+        Actions.CCLOCKWISE: 1,
+        'collision': -10,
+        'closetothegoal': 5,
     }
-    DELTA_MOVE_THRESHOLD = .2
+
+    DELTA_MOVE_DETECTION_THRESHOLD = .2
 
     def __init__(self, n_states=1024, n_actions=4,
                  alpha=0.1, gamma=0.75,
@@ -158,9 +156,9 @@ class QLearning(object):
         self.Q_ = (Q if Q is not None else
                    self.random_state.rand(self.n_states, self.n_actions))
 
-        self.current_iteration_ = 1
+        self.cycle_ = 1
         self.action_ = Actions.FORWARD
-        self.distance_to_goal_ = np.inf
+        self.distance_to_goal_ = 17
         self.state_code_ = self.discretize(5 * [np.inf])
 
     def update(self, percept):
@@ -171,7 +169,7 @@ class QLearning(object):
         :param percept: array-like, the current perception of the environment.
         """
         logger.info('perception received: %s', percept)
-        logger.info('current iteration: %i', self.current_iteration_)
+        logger.info('current iteration: %i', self.cycle_)
         random = self.random_state
 
         Q, old_state, a = self.Q_, int(self.state_code_, 2), self.action_
@@ -188,23 +186,23 @@ class QLearning(object):
         self.state_code_ = state_code
 
         if self.strategy == 'greedy' or random.rand() > (
-                self.epsilon * weight_for_cycle(self.current_iteration_)):
+                self.epsilon * weight_for_cycle(self.cycle_)):
             self.action_ = np.argmax(self.Q_[state])
 
         elif self.strategy == 'e-greedy':
             self.action_ = random.randint(0, self.n_actions)
             logger.info('%i was randomly chosen. (e=%f)', self.action_, (
-                self.epsilon * weight_for_cycle(self.current_iteration_)))
+                self.epsilon * weight_for_cycle(self.cycle_)))
 
         else:
             raise ValueError('Incorrect value for strategy: %s'
                              % self.strategy)
 
-        if self.checkpoint and self.current_iteration_ % self.checkpoint == 0:
+        if self.checkpoint and self.cycle_ % self.checkpoint == 0:
             logger.info('saving snapshot of Q-learning model...')
             utils.ModelStorage.save(self.Q_, name=self.saving_name)
 
-        self.current_iteration_ += 1
+        self.cycle_ += 1
 
         logger.info('\nepsilon-e-greedy: %f, weight:%f\n'
                     'previous and current actions: %i, %i\n'
@@ -212,9 +210,8 @@ class QLearning(object):
                     'Q[state]: %s\n'
                     'old_state: %i, state: %i\n'
                     'old_state_code: %s, state_code: %s',
-                    (self.epsilon * weight_for_cycle(
-                        self.current_iteration_)),
-                    (weight_for_cycle(self.current_iteration_)),
+                    self.epsilon * weight_for_cycle(self.cycle_),
+                    weight_for_cycle(self.cycle_),
                     a, self.action_, Q[old_state], Q[state], old_state, state,
                     old_state_code, state_code)
 
@@ -231,8 +228,8 @@ class QLearning(object):
         """
         return (
             binary_code(self.distance_to_goal_ - p[0],
-                        (-1) * self.DELTA_MOVE_THRESHOLD,
-                        self.DELTA_MOVE_THRESHOLD) +
+                        (-1) * self.DELTA_MOVE_DETECTION_THRESHOLD,
+                        self.DELTA_MOVE_DETECTION_THRESHOLD) +
             binary_code(p[1], self._front_sonar_min_value,
                         self._front_sonar_max_value) +
             binary_code(p[2], self._front_sonar_min_value,
@@ -245,8 +242,7 @@ class QLearning(object):
 
     def reward(self, state, action, distance_to_goal):
         """Immediate Reward Function."""
-        reward = 0.0
-        reward_proximity = 0.0
+        reward = 0
         chunks = [state[start: start + 2] for start in range(0, len(state), 2)]
 
         for i, chunk in enumerate(chunks):
@@ -262,14 +258,12 @@ class QLearning(object):
             elif decoded_state == AgentStates.CLOSE_TO_GOAL:
                 reward_proximity = (self.IMMEDIATE_REWARD['closetothegoal'] *
                                     weight_for_distance(distance_to_goal))
-                reward += (self.IMMEDIATE_REWARD['closetothegoal'] *
-                           weight_for_distance(distance_to_goal))
+                reward += reward_proximity
+                logger.info('distance: %f, reward-proximity: %f',
+                            distance_to_goal, reward_proximity)
 
         # rewards related to actions.
         reward += self.IMMEDIATE_REWARD[action]
 
-        logger.info('reward: %f (proximity=%f -> %i * %f, distancia=%f)',
-                    reward, reward_proximity,
-                    self.IMMEDIATE_REWARD['closetothegoal'],
-                    weight_for_distance(distance_to_goal), distance_to_goal)
+        logger.info('reward: %f', reward)
         return reward

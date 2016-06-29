@@ -41,7 +41,7 @@ class ProximitySensor(Sensor):
             utils.vrep.simx_opmode_buffer)
         errors = data[0]
 
-        assert not errors
+        assert not errors, 'Error retrieving value from proximity sensor'
 
         self.last_read = None if errors else data[1:]
         return self
