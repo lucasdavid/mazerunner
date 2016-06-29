@@ -91,12 +91,16 @@ class RoboticAgent(Agent):
                 'front': components.Camera(link, component='NAO_vision1'),
                 'floor': components.Camera(link, component='NAO_vision2'),
             },
-            'proximity': {
-                'front': components.ProximitySensor(link, component='Proximity_sensor1'),
-                'left': components.ProximitySensor(link, component='Proximity_sensor2'),
-                'right': components.ProximitySensor(link, component='Proximity_sensor3'),
-                'back': components.ProximitySensor(link, component='Proximity_sensor4'),
-            },
+            'proximity': [
+                components.ProximitySensor(link, component='Proximity_sensor1'), #front
+                components.ProximitySensor(link, component='Proximity_sensor4'), #back
+                components.ProximitySensor(link, component='Proximity_sensor3'), #clockwise
+                components.ProximitySensor(link, component='Proximity_sensor2')  #cclockwise
+               # 'front': components.ProximitySensor(link, component='Proximity_sensor1'),
+               # 'left': components.ProximitySensor(link, component='Proximity_sensor2'),
+               # 'right': components.ProximitySensor(link, component='Proximity_sensor3'),
+               # 'back': components.ProximitySensor(link, component='Proximity_sensor4'),
+            ],
             'position': [
                 components.Tag(link, component='tag1'),
                 components.Tag(link, component='tag2'),
@@ -114,7 +118,7 @@ class RoboticAgent(Agent):
         # Assemble perceived state structure.
         self.percept_ = ([np.linalg.norm(goal - me)] +
                          [s.read().distance
-                          for s in self.sensors['proximity'].values()])
+                          for s in self.sensors['proximity']])
 
         logger.info('perception assembled: %s', self.percept_)
         return self

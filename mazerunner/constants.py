@@ -27,5 +27,5 @@ class AgentStates(Enum):
 
 STATES = Enum('disabled', 'idle', 'moving', 'thinking', 'stuck', 'dead')
 
-MAX_LEARNING_CYCLES = 1000
+MAX_LEARNING_CYCLES = 3000
 IMMINENT_COLLISION_THRESHOLD = .2

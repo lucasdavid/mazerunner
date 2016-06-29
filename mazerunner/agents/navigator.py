@@ -24,7 +24,7 @@ class Navigator(Walker):
         super(Navigator, self).__init__(identity, interface, link, random_state)
 
         self.learning_model = learning_model or learning.QLearning(
-            alpha=0.1, gamma=.5, strategy='e-greedy', epsilon=.25)
+            alpha=0.2, gamma=.75, strategy='e-greedy', epsilon=.85)
 
     def idle(self):
         """Update the QLearning table, retrieve an action and check for
@@ -33,7 +33,7 @@ class Navigator(Walker):
         action = self.learning_model.update(self.percept_).action
 
         if (all(s.imminent_collision for s in
-                self.sensors['proximity'].values()) or
+                self.sensors['proximity']) or
             self.cycle_ >= constants.MAX_LEARNING_CYCLES):
             # There's nothing left to be done, only flag this is a dead-end
             # so it can be restarted.
@@ -43,8 +43,8 @@ class Navigator(Walker):
             # Reduce step size if we are going against a close obstacle.
             sensors = self.sensors['proximity']
 
-            sensor = (sensors['front'] if action == Actions.FORWARD else
-                      sensors['back'] if action == Actions.BACKWARD else
+            sensor = (sensors[0] if action == Actions.FORWARD else
+                      sensors[1] if action == Actions.BACKWARD else
                       None)
 
             stride = (min(self.STRIDE, .9 * sensor.distance) if sensor else

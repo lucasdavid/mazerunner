@@ -13,7 +13,7 @@ import logging
 import math
 import numpy as np
 
-from ..constants import Actions, AgentStates
+from ..constants import Actions, AgentStates, MAX_LEARNING_CYCLES
 
 logger = logging.getLogger('mazerunner')
 
@@ -27,6 +27,13 @@ def binary_code(value, min_value, max_value):
 def get_weight_from(distance):
     weight = 1 / math.exp(distance)
     return weight
+
+def get_weight_for_cycle(current_iteration):
+    if (current_iteration is None):
+        return 1.0
+    else:
+        weight = float(MAX_LEARNING_CYCLES - current_iteration)/MAX_LEARNING_CYCLES
+        return weight
 
 
 def decode_state(state, sonar):
@@ -68,12 +75,12 @@ class QLearning(object):
     """
 
     IMMEDIATE_REWARD = {
-        Actions.BACKWARD: 1,
         Actions.FORWARD: 1,
-        Actions.CLOCKWISE: 1,
-        Actions.CCLOCKWISE: 1,
+        Actions.BACKWARD: 1,
+        Actions.CLOCKWISE: 0,
+        Actions.CCLOCKWISE: 0,
         'collision': -100,
-        'closetothegoal': 10,
+        'closetothegoal': 100,
     }
     DELTA_MOVE_THRESHOLD = .2
 
@@ -102,6 +109,7 @@ class QLearning(object):
 
         self.strategy = strategy
         self.epsilon = epsilon
+        self.current_iteration = 1
 
         self.random_state = random_state or np.random.RandomState()
         self.Q_ = self.random_state.rand(self.n_states, self.n_actions)
@@ -117,6 +125,8 @@ class QLearning(object):
 
         :param percept: array-like, the current perception of the environment.
         """
+        logger.info('perception received: %s', percept)
+        logger.info('current iteration: %i', self.current_iteration)
         random = self.random_state
 
         Q, old_state, a = self.Q_, int(self.state_code, 2), self.action
@@ -129,25 +139,31 @@ class QLearning(object):
                            self.alpha * (r + self.gamma * np.max(Q[state])))
 
         self.distance_to_goal = percept[0]
+        old_state_code = self.state_code
         self.state_code = state_code
 
-        if self.strategy == 'greedy' or random.rand() > self.epsilon:
+        if self.strategy == 'greedy' or random.rand() > (self.epsilon * get_weight_for_cycle(self.current_iteration)):
             self.action = np.argmax(self.Q_[state])
 
         elif self.strategy == 'e-greedy':
             self.action = random.randint(0, self.n_actions)
-            logger.info('%i was randomly chosen.', self.action)
+            logger.info('%i was randomly chosen. (e=%f)', self.action, (self.epsilon * get_weight_for_cycle(self.current_iteration)))
 
         else:
             raise ValueError('Incorrect value for strategy: %s'
                              % self.strategy)
 
-        logger.info('\nprevious action: %i\n'
+        self.current_iteration = self.current_iteration + 1
+
+        logger.info('\nepsilon-e-greedy: %f, weight:%f\n'
+                    'previous action: %i\n'
                     'current action: %i\n'
                     'Q[old_state]: %s\n'
                     'Q[state]: %s\n'
-                    'state_code: %s',
-                    a, self.action, Q[old_state], Q[state], state_code)
+                    'old_state: %i, state: %i\n'
+                    'old_state_code: %s, state_code: %s',
+                    (self.epsilon * get_weight_for_cycle(self.current_iteration)), (get_weight_for_cycle(self.current_iteration)),
+                    a, self.action, Q[old_state], Q[state], old_state, state, old_state_code, state_code)
 
         return self
 
@@ -177,6 +193,7 @@ class QLearning(object):
     def reward(self, state, action, distance_to_goal):
         """Immediate Reward Function."""
         reward = 0.0
+        reward_proximity = 0.0
         chunks = [state[start: start + 2] for start in range(0, len(state), 2)]
 
         for i, chunk in enumerate(chunks):
@@ -190,11 +207,15 @@ class QLearning(object):
                 reward += self.IMMEDIATE_REWARD['collision']
 
             elif decoded_state == AgentStates.CLOSE_TO_GOAL:
+                reward_proximity = (self.IMMEDIATE_REWARD['closetothegoal'] *
+                           get_weight_from(distance_to_goal))
                 reward += (self.IMMEDIATE_REWARD['closetothegoal'] *
                            get_weight_from(distance_to_goal))
 
         # rewards related to actions.
         reward += self.IMMEDIATE_REWARD[action]
 
-        logger.info('reward: %i', reward)
+        logger.info('reward: %f (proximity=%f -> %i * %f, distancia=%f)',
+                    reward, reward_proximity,
+                    self.IMMEDIATE_REWARD['closetothegoal'], get_weight_from(distance_to_goal), distance_to_goal)
         return reward

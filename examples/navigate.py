@@ -16,7 +16,7 @@ logger = logging.getLogger('mazerunner')
 logger.setLevel(logging.DEBUG)
 
 INTERFACE = ('127.0.0.1', 5000)
-UPDATE_PERIOD = 2
+UPDATE_PERIOD = 0.5 #2
 ITERATIONS = None
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ class Walker(base.RoboticAgent):
 
     def moving(self):
         """Move the robot's body forward until an obstacle is detected."""
-        if self.sensors['proximity']['front'].imminent_collision:
+        if self.sensors['proximity'][0].imminent_collision:
             self.motion.stopMove()
             self.posture.goToPosture('Stand', self.SPEED)
             self.state_ = STATES.thinking
@@ -53,19 +53,19 @@ class Walker(base.RoboticAgent):
             # before taking any other measure.
             pass
 
-        elif not self.sensors['proximity']['front'].imminent_collision:
+        elif not self.sensors['proximity'][0].imminent_collision:
             # Goes back to moving state.
             self.state_ = STATES.moving
 
         elif all(s.imminent_collision for s in
-                 self.sensors['proximity'].values()):
+                 self.sensors['proximity']):
             # There's nothing left to be done, only flag this is a dead-end.
             self.state_ = STATES.stuck
 
         else:
-            for sensor, maneuver in (('left', np.pi / 2),
-                                     ('right', -np.pi / 2),
-                                     ('back', np.pi)):
+            for sensor, maneuver in ((3, np.pi / 2),
+                                     (2, -np.pi / 2),
+                                     (1, np.pi)):
                 # Find which direction doesn't have 
                 # any obstacles and rotate to face it.
                 if not self.sensors['proximity'][sensor].imminent_collision:
