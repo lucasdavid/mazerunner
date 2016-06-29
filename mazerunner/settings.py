@@ -1,4 +1,7 @@
+import os
+
 TRAINING = True
 
-BASE_FOLDER = '~/.mazerunner'
+HOME_FOLDER = os.path.expanduser('~')
+BASE_FOLDER = os.path.join(HOME_FOLDER, '.mazerunner')
 MODEL_FOLDER = 'data'

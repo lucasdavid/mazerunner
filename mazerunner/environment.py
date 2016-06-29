@@ -75,7 +75,6 @@ class Environment:
                     agent.update()
 
                 time.sleep(self.update_period)
-                logger.info('Iteration #%i finished.', self.cycle_)
                 self.cycle_ += 1
 
         except KeyboardInterrupt:

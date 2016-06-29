@@ -1,4 +1,4 @@
-"""QLearning Algorithm.
+"""Q-learning Algorithm.
 
 Authors:
     Agnaldo     -- <agnaldo.esmael@ic.unicamp.br>
@@ -14,6 +14,7 @@ import math
 import numpy as np
 
 from ..constants import Actions, AgentStates, MAX_LEARNING_CYCLES
+from .. import utils
 
 logger = logging.getLogger('mazerunner')
 
@@ -24,16 +25,15 @@ def binary_code(value, min_value, max_value):
             '00')
 
 
-def get_weight_from(distance):
+def weight_for_distance(distance):
     weight = 1 / math.exp(distance)
     return weight
 
-def get_weight_for_cycle(current_iteration):
-    if (current_iteration is None):
-        return 1.0
-    else:
-        weight = float(MAX_LEARNING_CYCLES - current_iteration)/MAX_LEARNING_CYCLES
-        return weight
+
+def weight_for_cycle(current_iteration):
+    return (1 if current_iteration is None else
+            (float(MAX_LEARNING_CYCLES - current_iteration)
+             / MAX_LEARNING_CYCLES))
 
 
 def decode_state(state, sonar):
@@ -43,7 +43,7 @@ def decode_state(state, sonar):
 
     :param state: current state (binary representation)
     :param sonar: boolean indicating if the state is from a sonar or not
-    :return:
+    :return: int
     """
     dec_from_binary = int(state, 2)
     state_translated = -1
@@ -68,9 +68,47 @@ def decode_state(state, sonar):
 
 
 class QLearning(object):
-    """QLearning.
+    """Q-learning.
 
     Q-learning algorithm for RoboticAgents' walk.
+
+    :param n_states: int, default=1024
+        Number of possible states considered by the agent.
+
+    :param n_actions: int, default=4
+        Number of possible actions considered by the agent.
+        Must match `constants.Actions` enumeration.
+
+    :param alpha: float, default=.1
+        Learning rate of the algorithm.
+
+    :param gamma: float, default=.75
+        Discount factor.
+
+    :param strategy: str, default='greedy'
+        Strategy used when selecting actions. Options are:
+        --- 'greedy': selects the best option available.
+        --- 'e-greedy': selects a random action with probability `epsilon`
+            and the best action available with probability `1-epsilon`.
+
+    :param epsilon: float, default=.5
+        Probability of randomly selecting a action when strategy is 'e-greedy'.
+
+    :param front_sonar_min_value:
+    :param front_sonar_max_value:
+    :param side_sonar_min_value:
+    :param side_sonar_max_value:
+
+    :param checkpoint: int, default=None
+        If an integer, it will save a snapshot of the current model
+        (the table Q) every `checkpoint` iterations.
+
+    :param saving_name: str, default='snapshot.model.gz'
+        File name used to save the model's snapshot. Used when persisting
+        multiple models (E.g.: training multiple agents).
+
+    :param random_state: RandomState-like
+        Used to control the randomness of QLearning objects.
 
     """
 
@@ -87,8 +125,11 @@ class QLearning(object):
     def __init__(self, n_states=1024, n_actions=4,
                  alpha=0.1, gamma=0.75,
                  strategy='greedy', epsilon=.5,
+                 Q=None,
                  front_sonar_min_value=.2, front_sonar_max_value=.5,
                  side_sonar_min_value=.2, side_sonar_max_value=.5,
+                 checkpoint=None,
+                 saving_name='snapshot.model.gz',
                  random_state=None):
         self.n_states = n_states
         self.n_actions = n_actions
@@ -109,14 +150,18 @@ class QLearning(object):
 
         self.strategy = strategy
         self.epsilon = epsilon
-        self.current_iteration = 1
+        self.checkpoint = checkpoint
 
+        self.saving_name = saving_name
         self.random_state = random_state or np.random.RandomState()
-        self.Q_ = self.random_state.rand(self.n_states, self.n_actions)
 
-        self.action = Actions.FORWARD
-        self.distance_to_goal = np.inf
-        self.state_code = self.discretize(5 * [np.inf])
+        self.Q_ = (Q if Q is not None else
+                   self.random_state.rand(self.n_states, self.n_actions))
+
+        self.current_iteration_ = 1
+        self.action_ = Actions.FORWARD
+        self.distance_to_goal_ = np.inf
+        self.state_code_ = self.discretize(5 * [np.inf])
 
     def update(self, percept):
         """Update the table Q after the execution of the current action, which
@@ -126,11 +171,11 @@ class QLearning(object):
         :param percept: array-like, the current perception of the environment.
         """
         logger.info('perception received: %s', percept)
-        logger.info('current iteration: %i', self.current_iteration)
+        logger.info('current iteration: %i', self.current_iteration_)
         random = self.random_state
 
-        Q, old_state, a = self.Q_, int(self.state_code, 2), self.action
-        r = self.reward(self.state_code, a, self.distance_to_goal)
+        Q, old_state, a = self.Q_, int(self.state_code_, 2), self.action_
+        r = self.reward(self.state_code_, a, self.distance_to_goal_)
 
         state_code = self.discretize(percept)
         state = int(state_code, 2)
@@ -138,32 +183,40 @@ class QLearning(object):
         Q[old_state, a] = ((1 - self.alpha) * Q[old_state, a] +
                            self.alpha * (r + self.gamma * np.max(Q[state])))
 
-        self.distance_to_goal = percept[0]
-        old_state_code = self.state_code
-        self.state_code = state_code
+        self.distance_to_goal_ = percept[0]
+        old_state_code = self.state_code_
+        self.state_code_ = state_code
 
-        if self.strategy == 'greedy' or random.rand() > (self.epsilon * get_weight_for_cycle(self.current_iteration)):
-            self.action = np.argmax(self.Q_[state])
+        if self.strategy == 'greedy' or random.rand() > (
+                self.epsilon * weight_for_cycle(self.current_iteration_)):
+            self.action_ = np.argmax(self.Q_[state])
 
         elif self.strategy == 'e-greedy':
-            self.action = random.randint(0, self.n_actions)
-            logger.info('%i was randomly chosen. (e=%f)', self.action, (self.epsilon * get_weight_for_cycle(self.current_iteration)))
+            self.action_ = random.randint(0, self.n_actions)
+            logger.info('%i was randomly chosen. (e=%f)', self.action_, (
+                self.epsilon * weight_for_cycle(self.current_iteration_)))
 
         else:
             raise ValueError('Incorrect value for strategy: %s'
                              % self.strategy)
 
-        self.current_iteration = self.current_iteration + 1
+        if self.checkpoint and self.current_iteration_ % self.checkpoint == 0:
+            logger.info('saving snapshot of Q-learning model...')
+            utils.ModelStorage.save(self.Q_, name=self.saving_name)
+
+        self.current_iteration_ += 1
 
         logger.info('\nepsilon-e-greedy: %f, weight:%f\n'
-                    'previous action: %i\n'
-                    'current action: %i\n'
+                    'previous and current actions: %i, %i\n'
                     'Q[old_state]: %s\n'
                     'Q[state]: %s\n'
                     'old_state: %i, state: %i\n'
                     'old_state_code: %s, state_code: %s',
-                    (self.epsilon * get_weight_for_cycle(self.current_iteration)), (get_weight_for_cycle(self.current_iteration)),
-                    a, self.action, Q[old_state], Q[state], old_state, state, old_state_code, state_code)
+                    (self.epsilon * weight_for_cycle(
+                        self.current_iteration_)),
+                    (weight_for_cycle(self.current_iteration_)),
+                    a, self.action_, Q[old_state], Q[state], old_state, state,
+                    old_state_code, state_code)
 
         return self
 
@@ -177,7 +230,7 @@ class QLearning(object):
 
         """
         return (
-            binary_code(self.distance_to_goal - p[0],
+            binary_code(self.distance_to_goal_ - p[0],
                         (-1) * self.DELTA_MOVE_THRESHOLD,
                         self.DELTA_MOVE_THRESHOLD) +
             binary_code(p[1], self._front_sonar_min_value,
@@ -208,14 +261,15 @@ class QLearning(object):
 
             elif decoded_state == AgentStates.CLOSE_TO_GOAL:
                 reward_proximity = (self.IMMEDIATE_REWARD['closetothegoal'] *
-                           get_weight_from(distance_to_goal))
+                                    weight_for_distance(distance_to_goal))
                 reward += (self.IMMEDIATE_REWARD['closetothegoal'] *
-                           get_weight_from(distance_to_goal))
+                           weight_for_distance(distance_to_goal))
 
         # rewards related to actions.
         reward += self.IMMEDIATE_REWARD[action]
 
         logger.info('reward: %f (proximity=%f -> %i * %f, distancia=%f)',
                     reward, reward_proximity,
-                    self.IMMEDIATE_REWARD['closetothegoal'], get_weight_from(distance_to_goal), distance_to_goal)
+                    self.IMMEDIATE_REWARD['closetothegoal'],
+                    weight_for_distance(distance_to_goal), distance_to_goal)
         return reward

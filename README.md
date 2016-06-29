@@ -22,7 +22,7 @@ Finally, install MazeRunner:
 python setup.py install --user
 ```
 
-## Executing the Examples
+## Executing Navigation with QLearning
 
 1. First, start `Choregraph`:
 ```shell
@@ -35,7 +35,7 @@ python setup.py install --user
 ```
 Then open one of the scenes in `mazerunner/scenes` folder and run it.
 
-3. Finally, run one of the examples:
+3. Finally, run the navigation:
 ```shell
-python mazerunner/examples/simple_walker.py
+python mazerunner/examples/navigate.py
 ```

@@ -1,4 +1,7 @@
-"""Simple Walker Example.
+"""Re-spawn Example.
+
+Exemplifies an agent that easily transit to the `stuck` state, where he
+will be re-spawned to the beginning position (indicated by tag 1).
 
 Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016

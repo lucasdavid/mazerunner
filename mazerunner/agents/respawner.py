@@ -14,7 +14,12 @@ logger = logging.getLogger('mazerunner')
 
 
 class Respawner(Walker):
-    """Respawner Agent."""
+    """Respawner Agent.
+
+    This is a toy agent that exemplifies how a RoboticAgent behaves when
+    stuck by easily reaching this state.
+
+    """
 
     def idle(self):
         sensors = self.sensors['proximity']
@@ -22,7 +27,7 @@ class Respawner(Walker):
             self.state_ = STATES.stuck
 
         else:
-            self.motion.moveTo(self.STRIDE, 0, 0)
+            self.motion.post.moveTo(self.STRIDE, 0, 0)
             self.state_ = STATES.moving
 
         return self

@@ -46,6 +46,17 @@ class RoboticAgent(Agent):
     :param interface: tuple (str, int).
         Tuple indicating the IP and port of the robot that will be controlled.
         E.g.: ('127.0.0.1', 5000), ('localhost', 6223).
+
+    :param link:
+        A link to V-REP, usually created by the `Environment` and shared
+        throughout all the components. This can be overridden during the
+        `start` procedure.
+
+    :param random_state: RandomState-like, default=None.
+        A random state used to control randomness in which the RoboticAgent
+        acts. If None is passed, a new one is build with the current timestamp
+        as seed.
+
     """
 
     STRIDE = 1.0
@@ -83,7 +94,8 @@ class RoboticAgent(Agent):
 
         self.joint_manager_ = utils.JointManager(link=link,
                                                  motion=self.motion,
-                                                 identity=self.identity)
+                                                 identity=self.identity,
+                                                 robot_adapter=self.adapter)
         self.joint_manager_.start()
 
         self.sensors = {
@@ -136,11 +148,10 @@ class RoboticAgent(Agent):
         self.motion.stopMove()
         self.posture.goToPosture('Stand', self.SPEED)
 
-        tag1_position = self.sensors['position'][0].position
+        start = self.sensors['position'][0].position
+        self.joint_manager_.reset(at=start)
 
-        utils.vrep.simxSetObjectPosition(
-            self.adapter.link, self.adapter.handler, -1, tag1_position,
-            utils.vrep.simx_opmode_oneshot)
+        self.state_ = STATES.idle
 
     def dead(self):
         """Doesn't do anything."""
@@ -151,7 +162,7 @@ class RoboticAgent(Agent):
         self.posture.goToPosture('Stand', self.SPEED)
 
         # Stop sync routine.
-        self.joint_manager_.active_ = False
+        self.joint_manager_.active = False
         self.joint_manager_.join()
 
         self.state_ = STATES.dead

@@ -1,6 +1,13 @@
+"""QLearning Execution.
+
+Exemplifies the usage of QLearning.
+
+Author: Karina Bogdan  -- <karina.bogdan@gmail.com>
+
+"""
 from mazerunner.learning import QLearning
 
-state = [2.0, 0.6, 0.5, 0.4, 0.4]
+toy_state = [2.0, 0.6, 0.5, 0.4, 0.4]
 
 
 def main():
@@ -8,13 +15,11 @@ def main():
     print(learner.IMMEDIATE_REWARD['collision'])
 
     for i in range(5):
-        action = learner.get_action()
+        action = learner.update(percept=toy_state)
         print('action=', action)
 
-        state[1] -= 0.1
-        state[0] -= 0.1
-
-        learner.update(state)
+        toy_state[1] -= 0.1
+        toy_state[0] -= 0.1
 
 
 if __name__ == '__main__':

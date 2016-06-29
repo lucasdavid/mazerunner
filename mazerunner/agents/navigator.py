@@ -14,7 +14,25 @@ logger = logging.getLogger('mazerunner')
 
 
 class Navigator(Walker):
-    """Navigator Agent."""
+    """Navigator Agent.
+
+    Navigates through the environment using a QLearning model.
+
+    :param identity: [str, int], default=''.
+        Integer or string that identifies the robot that will be controlled.
+        E.g.: 0, '', 'jogger' or 'kyle'.
+
+    :param interface: tuple (str, int).
+        Tuple indicating the IP and port of the robot that will be controlled.
+        E.g.: ('127.0.0.1', 5000), ('localhost', 6223).
+
+    :param link:
+
+
+    :param learning_model:
+    :param random_state:
+
+    """
 
     STRIDE = 1
     SPEED = .7
@@ -24,17 +42,17 @@ class Navigator(Walker):
         super(Navigator, self).__init__(identity, interface, link, random_state)
 
         self.learning_model = learning_model or learning.QLearning(
-            alpha=0.2, gamma=.75, strategy='e-greedy', epsilon=.85)
+            alpha=0.2, gamma=.75, strategy='e-greedy', epsilon=.85,
+            checkpoint=10, saving_name='snapshot.navigation.gz')
 
     def idle(self):
         """Update the QLearning table, retrieve an action and check for
         dead-ends.
         """
-        action = self.learning_model.update(self.percept_).action
+        action = self.learning_model.update(self.percept_).action_
 
-        if (all(s.imminent_collision for s in
-                self.sensors['proximity']) or
-                self.cycle_ >= constants.MAX_LEARNING_CYCLES):
+        if (all(s.imminent_collision for s in self.sensors['proximity']) or
+            self.cycle_ >= constants.MAX_LEARNING_CYCLES):
             # There's nothing left to be done, only flag this is a dead-end
             # so it can be restarted.
             self.state_ = STATES.stuck
