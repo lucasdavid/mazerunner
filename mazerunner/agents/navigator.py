@@ -34,21 +34,22 @@ class Navigator(Walker):
 
         if (all(s.imminent_collision for s in
                 self.sensors['proximity']) or
-            self.cycle_ >= constants.MAX_LEARNING_CYCLES):
+                self.cycle_ >= constants.MAX_LEARNING_CYCLES):
             # There's nothing left to be done, only flag this is a dead-end
             # so it can be restarted.
             self.state_ = STATES.stuck
 
         else:
-            # Reduce step size if we are going against a close obstacle.
             sensors = self.sensors['proximity']
 
             sensor = (sensors[0] if action == Actions.FORWARD else
                       sensors[1] if action == Actions.BACKWARD else
                       None)
 
-            stride = (min(self.STRIDE, .9 * sensor.distance) if sensor else
-                      self.STRIDE)
+            stride = self.STRIDE
+            if sensor and sensor.imminent_collision:
+                # Reduce step size if it's going against a close obstacle.
+                stride = min(stride, .9 * sensor.distance)
 
             move_to = ((stride, 0, 0) if action == Actions.FORWARD else
                        (-stride, 0, 0) if action == Actions.BACKWARD else
@@ -61,7 +62,8 @@ class Navigator(Walker):
         return self
 
     def moving(self):
-        """Prevents the robot of thinking too much."""
+        """Makes sure the robot completes its actions before requesting
+        a new one to its QLearning model."""
         if not self.motion.moveIsActive():
             # motion.post.moveTo call is non-blocking. We wait until they
             # are finished and only then re-evaluate the environment.

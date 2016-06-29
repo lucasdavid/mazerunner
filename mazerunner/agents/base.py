@@ -87,19 +87,19 @@ class RoboticAgent(Agent):
         self.joint_manager_.start()
 
         self.sensors = {
-            'vision': {
-                'front': components.Camera(link, component='NAO_vision1'),
-                'floor': components.Camera(link, component='NAO_vision2'),
-            },
+            'vision': [
+                components.Camera(link, component='NAO_vision1'),
+                components.Camera(link, component='NAO_vision2'),
+            ],
             'proximity': [
-                components.ProximitySensor(link, component='Proximity_sensor1'), #front
-                components.ProximitySensor(link, component='Proximity_sensor4'), #back
-                components.ProximitySensor(link, component='Proximity_sensor3'), #clockwise
-                components.ProximitySensor(link, component='Proximity_sensor2')  #cclockwise
-               # 'front': components.ProximitySensor(link, component='Proximity_sensor1'),
-               # 'left': components.ProximitySensor(link, component='Proximity_sensor2'),
-               # 'right': components.ProximitySensor(link, component='Proximity_sensor3'),
-               # 'back': components.ProximitySensor(link, component='Proximity_sensor4'),
+                # front
+                components.ProximitySensor(link, component='Proximity_sensor1'),
+                # back
+                components.ProximitySensor(link, component='Proximity_sensor4'),
+                # clockwise
+                components.ProximitySensor(link, component='Proximity_sensor3'),
+                # counter-clockwise
+                components.ProximitySensor(link, component='Proximity_sensor2')
             ],
             'position': [
                 components.Tag(link, component='tag1'),
