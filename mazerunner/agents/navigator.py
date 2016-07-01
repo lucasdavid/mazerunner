@@ -42,7 +42,7 @@ class Navigator(Walker):
         super(Navigator, self).__init__(identity, interface, link, random_state)
 
         self.learning_model = learning_model or learning.QLearning(
-            alpha=0.2, gamma=.75, strategy='e-greedy', epsilon=.85,
+            alpha=0.2, gamma=.75, epsilon=.85,
             checkpoint=10, saving_name='snapshot.navigation.gz')
 
     def idle(self):
@@ -73,7 +73,6 @@ class Navigator(Walker):
                        (-stride, 0, 0) if action == Actions.BACKWARD else
                        self.INSTRUCTIONS_MAP[action])
 
-            logger.info('walking: %s', move_to)
             self.motion.post.moveTo(*move_to)
             self.state_ = STATES.moving
 
@@ -86,3 +85,9 @@ class Navigator(Walker):
             # motion.post.moveTo call is non-blocking. We wait until they
             # are finished and only then re-evaluate the environment.
             self.state_ = STATES.idle
+
+    def dispose(self):
+        super(Navigator, self).dispose()
+        self.learning_model.dispose()
+
+        return self

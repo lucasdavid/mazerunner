@@ -11,7 +11,7 @@ import numpy as np
 
 from naoqi import ALProxy
 
-from mazerunner.components.base import Adapter
+from mazerunner.components.base import NAOAdapter
 from .. import components, utils
 from ..constants import STATES
 
@@ -76,7 +76,7 @@ class RoboticAgent(Agent):
         self.motion = ALProxy("ALMotion", *interface)
         self.posture = ALProxy("ALRobotPosture", *interface)
 
-        self.adapter = Adapter(link, 'NAO') if link else None
+        self.adapter = NAOAdapter(link, 'NAO') if link else None
         self.sensors = dict()
 
         self.joint_manager_ = None
@@ -85,7 +85,7 @@ class RoboticAgent(Agent):
 
     def start(self, link=None):
         if link is not None:
-            self.adapter = Adapter(link, 'NAO')
+            self.adapter = NAOAdapter(link, 'NAO')
 
         link = self.adapter.link
 
@@ -131,8 +131,6 @@ class RoboticAgent(Agent):
         self.percept_ = ([np.linalg.norm(goal - me)] +
                          [s.read().distance
                           for s in self.sensors['proximity']])
-
-        logger.info('perception assembled: %s', self.percept_)
         return self
 
     def act(self):
@@ -143,15 +141,8 @@ class RoboticAgent(Agent):
 
     def stuck(self):
         """Reset agent to the starting point."""
-        logger.info('Agent is stuck. Transporting it to the starting point.')
-
-        self.motion.stopMove()
-        self.posture.goToPosture('Stand', self.SPEED)
-
-        start = self.sensors['position'][0].position
-        self.joint_manager_.reset(at=start)
-
-        self.state_ = STATES.idle
+        logger.info('agent is stuck. Restarting...')
+        self.dispose().start(self.adapter.link)
 
     def dead(self):
         """Doesn't do anything."""
@@ -162,8 +153,10 @@ class RoboticAgent(Agent):
         self.posture.goToPosture('Stand', self.SPEED)
 
         # Stop sync routine.
-        self.joint_manager_.active = False
-        self.joint_manager_.join()
+        self.joint_manager_.dispose().join()
+
+        # Clear adapter.
+        self.adapter.dispose()
 
         self.state_ = STATES.dead
         self.cycle_ = 0

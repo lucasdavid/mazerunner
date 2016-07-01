@@ -6,18 +6,54 @@ Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
 """
-from ..utils import vrep
+import logging
+import time
+
+from .. import settings, utils
+
+logger = logging.getLogger('mazerunner')
 
 
 class Adapter(object):
     def __init__(self, link, component_tag):
         self.link = link
         self.component_tag = component_tag
+        self.handler = None
 
-        errors, self.handler = vrep.simxGetObjectHandle(
-            link, str(component_tag), vrep.simx_opmode_blocking)
+        errors, self.handler = utils.vrep.simxGetObjectHandle(
+            self.link, str(self.component_tag),
+            utils.vrep.simx_opmode_blocking)
 
         assert not errors
+
+
+class NAOAdapter(Adapter):
+    def __init__(self, link, component_tag):
+        self.link = link
+        self.component_tag = component_tag
+        self.handler = None
+
+        logger.info('loading model...')
+
+        utils.vrep.simxLoadModel(link, settings.ROBOT_MODEL_FILE, 0,
+                                 utils.vrep.simx_opmode_blocking)
+
+        errors = 1
+
+        while errors:
+            errors, self.handler = utils.vrep.simxGetObjectHandle(
+                self.link, str(self.component_tag),
+                utils.vrep.simx_opmode_blocking)
+            time.sleep(1)
+
+        assert not errors
+
+    def dispose(self):
+        logger.info('removing model...')
+        errors = utils.vrep.simxRemoveModel(self.link, self.handler,
+                                            utils.vrep.simx_opmode_blocking)
+        if errors: logger.error('something\'s not right (code: %i)' % errors)
+        return self
 
 
 class Component(object):

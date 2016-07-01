@@ -11,6 +11,7 @@ import time
 from threading import Thread
 
 from . import vrep
+from .. import settings
 
 logger = logging.getLogger('mazerunner')
 
@@ -74,55 +75,25 @@ class JointManager(Thread):
         self.robot_adapter = robot_adapter
 
         self.body_ = None
-        self.linked_ = False
-        self.active = False
+        self.active_ = False
 
         self.prepare()
 
     def prepare(self):
         logger.info('linking joints...')
-
-        self.body_ = [vrep.simxGetObjectHandle(
-            self.link, label + '#' + self.identity,
-            vrep.simx_opmode_oneshot_wait)[1]
-                      for label, _ in self.JOINT_MAP]
-
-        self.linked_ = True
-        logger.info('joints linked')
-
-    def reset(self, at):
-        logger.info('resetting robot to position %s...' % at)
-
-        assert self.linked_
-
-        # Disable physics for robot.
-        disabled = (vrep.sim_modelproperty_not_dynamic
-                    + vrep.sim_modelproperty_not_respondable)
-        vrep.simxSetModelProperty(self.link, self.robot_adapter.handler,
-                                  disabled, vrep.simx_opmode_blocking)
-
-        # Move the robot, effectively.
-        vrep.simxSetObjectPosition(self.link, self.robot_adapter.handler, -1,
-                                   at, vrep.simx_opmode_blocking)
-
-        # Enable physics once again.
-        enabled = (disabled - vrep.sim_modelproperty_not_dynamic -
-                   vrep.sim_modelproperty_not_respondable)
-        vrep.simxSetModelProperty(self.link, self.robot_adapter.handler,
-                                  enabled, vrep.simx_opmode_oneshot)
-
-        logger.info('resetting completed')
-
-        return self
+        self.body_ = [
+            vrep.simxGetObjectHandle(self.link, label + '#' + self.identity,
+                                     vrep.simx_opmode_oneshot_wait)[1]
+            for label, _ in self.JOINT_MAP]
 
     @property
     def is_connected(self):
         return vrep.simxGetConnectionId(self.link) != -1
 
     def run(self):
-        self.active = True
+        self.active_ = True
 
-        while self.active and self.is_connected:
+        while self.active_ and self.is_connected:
             angles = self.motion.getAngles('Body', False)
 
             for body_id, (label, angle_id) in enumerate(self.JOINT_MAP):
@@ -141,7 +112,5 @@ class JointManager(Thread):
         self.dispose()
 
     def dispose(self):
-        self.active = False
-
-        self.body_ = []
-        self.linked_ = False
+        self.active_ = False
+        return self

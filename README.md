@@ -2,10 +2,13 @@
 
 Final Project for Artificial Intelligence 2016-1 class at UNICAMP.
 
-Local navigation of the bibed robot NAO on a V-REP simulation using 
+Local navigation of the bibed robot NAO on a V-REP simulation using
 reinforcement learning (Q-Learning).
 The desired behavior is for the robot to use its sensors to avoid walls
 and attempt to get as close as possible to a tag placed at the kitchen.
+
+A video demonstrating the Navigator agent can be found
+[here](https://www.youtube.com/watch?v=UArqTlPcQG4&feature=youtu.be).
 
 ## Installing
 

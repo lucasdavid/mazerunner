@@ -115,14 +115,14 @@ class QLearning(object):
         Actions.CLOCKWISE: 1,
         Actions.CCLOCKWISE: 1,
         'collision': -10,
-        'closetothegoal': 5,
+        'closetothegoal': 10,
     }
 
     DELTA_MOVE_DETECTION_THRESHOLD = .2
 
     def __init__(self, n_states=1024, n_actions=4,
                  alpha=0.1, gamma=0.75,
-                 strategy='greedy', epsilon=.5,
+                 epsilon=.5,
                  Q=None,
                  front_sonar_min_value=.2, front_sonar_max_value=.5,
                  side_sonar_min_value=.2, side_sonar_max_value=.5,
@@ -146,7 +146,6 @@ class QLearning(object):
         self._side_sonar_min_value = side_sonar_min_value
         self._side_sonar_max_value = side_sonar_max_value
 
-        self.strategy = strategy
         self.epsilon = epsilon
         self.checkpoint = checkpoint
 
@@ -156,7 +155,7 @@ class QLearning(object):
         self.Q_ = (Q if Q is not None else
                    self.random_state.rand(self.n_states, self.n_actions))
 
-        self.cycle_ = 1
+        self.cycle_ = 0
         self.action_ = Actions.FORWARD
         self.distance_to_goal_ = 17
         self.state_code_ = self.discretize(5 * [np.inf])
@@ -168,8 +167,6 @@ class QLearning(object):
 
         :param percept: array-like, the current perception of the environment.
         """
-        logger.info('perception received: %s', percept)
-        logger.info('current iteration: %i', self.cycle_)
         random = self.random_state
 
         Q, old_state, a = self.Q_, int(self.state_code_, 2), self.action_
@@ -185,18 +182,14 @@ class QLearning(object):
         old_state_code = self.state_code_
         self.state_code_ = state_code
 
-        if self.strategy == 'greedy' or random.rand() > (
-                self.epsilon * weight_for_cycle(self.cycle_)):
+        if random.rand() > self.epsilon * weight_for_cycle(self.cycle_):
             self.action_ = np.argmax(self.Q_[state])
 
-        elif self.strategy == 'e-greedy':
-            self.action_ = random.randint(0, self.n_actions)
-            logger.info('%i was randomly chosen. (e=%f)', self.action_, (
-                self.epsilon * weight_for_cycle(self.cycle_)))
-
         else:
-            raise ValueError('Incorrect value for strategy: %s'
-                             % self.strategy)
+            self.action_ = random.randint(0, self.n_actions)
+            logger.info('action %i was randomly chosen. (e=%.2f)',
+                        self.action_,
+                        self.epsilon * weight_for_cycle(self.cycle_))
 
         if self.checkpoint and self.cycle_ % self.checkpoint == 0:
             logger.info('saving snapshot of Q-learning model...')
@@ -204,16 +197,15 @@ class QLearning(object):
 
         self.cycle_ += 1
 
-        logger.info('\nepsilon-e-greedy: %f, weight:%f\n'
-                    'previous and current actions: %i, %i\n'
-                    'Q[old_state]: %s\n'
-                    'Q[state]: %s\n'
-                    'old_state: %i, state: %i\n'
-                    'old_state_code: %s, state_code: %s',
+        logger.info('[%i]\n\tepsilon: %.2f\n'
+                    '\tprevious and current actions: %i, %i\n'
+                    '\tQ[old_state]: %s\n'
+                    '\tQ[state]: %s\n'
+                    '\told_state: %i, state: %i',
+                    self.cycle_,
                     self.epsilon * weight_for_cycle(self.cycle_),
-                    weight_for_cycle(self.cycle_),
-                    a, self.action_, Q[old_state], Q[state], old_state, state,
-                    old_state_code, state_code)
+                    a, self.action_,
+                    Q[old_state], Q[state], old_state, state)
 
         return self
 
@@ -267,3 +259,11 @@ class QLearning(object):
 
         logger.info('reward: %f', reward)
         return reward
+
+    def dispose(self):
+        self.cycle_ = 0
+
+    @classmethod
+    def load(cls, model='snapshot.navigation.gz', *args, **kwargs):
+        """Load a persisted model."""
+        return cls(*args, Q=utils.ModelStorage.load(model), **kwargs)

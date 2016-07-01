@@ -28,15 +28,9 @@ ITERATIONS = None
 if __name__ == "__main__":
     print(__doc__)
 
-    # Load saved Q tabled.
-    Q = utils.ModelStorage.load('snapshot.navigation.gz')
-
-    # Rebuild model.
-    model = learning.QLearning(alpha=0.2, gamma=.75, strategy='e-greedy',
-                               epsilon=.85, Q=Q, checkpoint=10,
-                               saving_name='snapshot.navigation.gz')
-
-    agent = agents.Navigator(0, interface=INTERFACE, learning_model=model)
+    # Rebuild agent.
+    agent = agents.Navigator(0, interface=INTERFACE,
+                             learning_model=learning.QLearning.load())
 
     mazerunner.Environment(agents=[agent], update_period=UPDATE_PERIOD,
                            life_cycles=ITERATIONS).live()

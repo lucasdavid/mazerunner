@@ -1,3 +1,11 @@
+"""Model Storage.
+
+Util for learning model persistence.
+
+Author: Lucas David -- <ld492@drexel.edu>
+License: MIT (c) 2016
+
+"""
 import os
 import numpy as np
 
@@ -20,28 +28,33 @@ class ModelStorage(object):
     """
 
     @staticmethod
-    def data_folder():
-        return os.path.join(settings.BASE_FOLDER, settings.MODEL_FOLDER)
-
-    @staticmethod
     def _prepare():
-        if not os.path.exists(settings.BASE_FOLDER):
-            os.mkdir(settings.BASE_FOLDER)
-
-        folder = ModelStorage.data_folder()
-        if not os.path.exists(folder):
-            os.mkdir(folder)
-
-        return ModelStorage
+        """Check and create required folder structure."""
+        if not os.path.exists(settings.DATA_FOLDER):
+            os.mkdir(settings.DATA_FOLDER)
 
     @staticmethod
     def save(model, name='snapshot.model.gz'):
-        folder = ModelStorage._prepare().data_folder()
+        """Save a learning model to a file.
 
-        np.savetxt(os.path.join(folder, name), model)
+        :param model: array-like, the model that will be saved.
+        :param name: str, the name under which the model will be saved.
+                     If the name ends with a '.gz' sequence, then the model
+                     is automatically compressed.
+        """
+        ModelStorage._prepare()
+
+        np.savetxt(os.path.join(settings.DATA_FOLDER, name), model)
 
     @staticmethod
     def load(name='snapshop.model.gz'):
-        folder = ModelStorage._prepare().data_folder()
+        """Load a persisted learning model from the file.
 
-        return np.loadtxt(os.path.join(folder, name))
+        :param name: str, the name of the file which contains the model.
+                     A file of same name must exist under
+                     `settings.DATA_FOLDER`.
+        :return: array-like, the learning model.
+        """
+        ModelStorage._prepare()
+
+        return np.loadtxt(os.path.join(settings.DATA_FOLDER, name))

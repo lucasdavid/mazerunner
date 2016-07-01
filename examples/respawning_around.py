@@ -1,4 +1,4 @@
-"""Re-spawn Example.
+"""Re-Spawning Around Example.
 
 Exemplifies an agent that easily transit to the `stuck` state, where he
 will be re-spawned to the beginning position (indicated by tag 1).
