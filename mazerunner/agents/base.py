@@ -7,13 +7,14 @@ License: MIT (c) 2016
 
 """
 import logging
-import numpy as np
+import time
 
+import numpy as np
+from enum import Enum
 from naoqi import ALProxy
 
 from mazerunner.components.base import NAOAdapter
 from .. import components, utils
-from ..constants import STATES
 
 logger = logging.getLogger('mazerunner')
 
@@ -62,6 +63,8 @@ class RoboticAgent(Agent):
     STRIDE = 1.0
     SPEED = .7
 
+    BEHAVIORS = Enum('disabled', 'idle', 'moving', 'thinking', 'stuck', 'dead')
+
     def __init__(self, identity='', interface=('127.0.0.1', 5000), link=None,
                  random_state=None):
         if len(interface) != 2:
@@ -80,8 +83,8 @@ class RoboticAgent(Agent):
         self.sensors = dict()
 
         self.joint_manager_ = None
-        self.percept_ = None
-        self.state_ = STATES.disabled
+        self.perception_ = None
+        self.behavior_ = self.BEHAVIORS.disabled
 
     def start(self, link=None):
         if link is not None:
@@ -108,36 +111,37 @@ class RoboticAgent(Agent):
                 components.ProximitySensor(link, component='Proximity_sensor1'),
                 # back
                 components.ProximitySensor(link, component='Proximity_sensor4'),
-                # clockwise
+                # right
                 components.ProximitySensor(link, component='Proximity_sensor3'),
-                # counter-clockwise
+                # left
                 components.ProximitySensor(link, component='Proximity_sensor2')
             ],
             'position': [
                 components.Tag(link, component='tag1'),
                 components.Tag(link, component='tag2'),
                 components.Tag(link, component='tag3')
+            ],
+            'orientation': [
+                components.Compass(link, component=self.adapter)
             ]
         }
 
-        self.state_ = STATES.idle
+        # Sleep for one second to guarantee sensors are ready.
+        time.sleep(1)
+
+        self.behavior_ = self.BEHAVIORS.idle
 
     def perceive(self):
-        # Get starting point, goal and robot positions. Then maps those to
-        # numpy arrays first so norm and subtraction work properly.
-        start, goal, me = (s.read().position for s in self.sensors['position'])
-
-        # Assemble perceived state structure.
-        self.percept_ = ([np.linalg.norm(goal - me)] +
-                         [s.read().distance
-                          for s in self.sensors['proximity']])
+        for tag, sensors in self.sensors.items():
+            for s in sensors:
+                s.read()
         return self
 
     def act(self):
         """Find a method with the same name of its current state and execute
         it.
         """
-        return getattr(self, str(self.state_))()
+        return getattr(self, str(self.behavior_))()
 
     def stuck(self):
         """Reset agent to the starting point."""
@@ -152,13 +156,15 @@ class RoboticAgent(Agent):
         self.motion.stopMove()
         self.posture.goToPosture('Stand', self.SPEED)
 
-        # Stop sync routine.
-        self.joint_manager_.dispose().join()
+        if self.joint_manager_:
+            # Stop sync routine.
+            self.joint_manager_.dispose().join()
 
-        # Clear adapter.
-        self.adapter.dispose()
+        if self.adapter:
+            # Clear adapter.
+            self.adapter.dispose()
 
-        self.state_ = STATES.dead
+        self.behavior_ = self.BEHAVIORS.dead
         self.cycle_ = 0
 
         return self

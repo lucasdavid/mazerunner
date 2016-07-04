@@ -10,71 +10,23 @@ License: MIT (c) 2016
 
 """
 import logging
-import math
-import numpy as np
 
-from ..constants import Actions, AgentStates, MAX_LEARNING_CYCLES
+import numpy as np
+from enum import EnumValue
+
 from .. import utils
 
 logger = logging.getLogger('mazerunner')
 
 
-def binary_code(value, min_value, max_value):
-    return ('10' if value < min_value else
-            '01' if min_value <= value <= max_value else
-            '00')
-
-
-def weight_for_distance(distance):
-    return 1 - distance / 28
-
-
-def weight_for_cycle(cycle):
-    return 1 - cycle / MAX_LEARNING_CYCLES
-
-
-def decode_state(state, sonar):
-    """Function that returns the state from (two)bit-information,
-    considering if the state is obtained from sonar information
-    or not (e.g. NAO moved to the goal).
-
-    :param state: current state (binary representation)
-    :param sonar: boolean indicating if the state is from a sonar or not
-    :return: int
-    """
-    dec_from_binary = int(state, 2)
-    state_translated = -1
-
-    if sonar:
-        if dec_from_binary == 0:  # close to obstacle
-            state_translated = AgentStates.CLOSE
-        elif dec_from_binary == 1:  # far away
-            state_translated = AgentStates.FARAWAY
-        elif dec_from_binary == 2:  # collision state
-            state_translated = AgentStates.COLLISION
-    else:
-        # estados da aproximacao
-        if dec_from_binary == 0:  # is close to the goal
-            state_translated = AgentStates.CLOSE_TO_GOAL
-        elif dec_from_binary == 1:  # same place
-            state_translated = AgentStates.SOME_PLACE
-        elif dec_from_binary == 2:  # moved away
-            state_translated = AgentStates.MOVED_AWAY
-
-    return state_translated
-
-
 class QLearning(object):
     """Q-learning.
 
-    Q-learning algorithm for RoboticAgents' walk.
+    Generic Q-learning algorithm for multiple problems.
 
-    :param n_states: int, default=1024
-        Number of possible states considered by the agent.
-
-    :param n_actions: int, default=4
-        Number of possible actions considered by the agent.
-        Must match `constants.Actions` enumeration.
+    :param actions: iterable
+        Enumeration, list or tuple containing all possible actions
+        for the agent which contains QLearning model.
 
     :param alpha: float, default=.1
         Learning rate of the algorithm.
@@ -82,19 +34,11 @@ class QLearning(object):
     :param gamma: float, default=.75
         Discount factor.
 
-    :param strategy: str, default='greedy'
-        Strategy used when selecting actions. Options are:
-        --- 'greedy': selects the best option available.
-        --- 'e-greedy': selects a random action with probability `epsilon`
-            and the best action available with probability `1-epsilon`.
-
-    :param epsilon: float, default=.5
-        Probability of randomly selecting a action when strategy is 'e-greedy'.
-
-    :param front_sonar_min_value:
-    :param front_sonar_max_value:
-    :param side_sonar_min_value:
-    :param side_sonar_max_value:
+    :param starting_epsilon: float, default=.5
+        Probability of randomly selecting a action instead of the default
+        `argmax Q[state]`. Decreases over time if n_epochs is passed, otherwise
+        it's considered in its fullest (although you should consider passing
+        0, if it's a trained execution).
 
     :param checkpoint: int, default=None
         If an integer, it will save a snapshot of the current model
@@ -109,161 +53,166 @@ class QLearning(object):
 
     """
 
-    IMMEDIATE_REWARD = {
-        Actions.FORWARD: 1,
-        Actions.BACKWARD: 1,
-        Actions.CLOCKWISE: 1,
-        Actions.CCLOCKWISE: 1,
-        'collision': -10,
-        'closetothegoal': 10,
-    }
+    class QTable(object):
+        """QTable.
 
-    DELTA_MOVE_DETECTION_THRESHOLD = .2
+        Abstraction for a sparse transition table for the Q-learning
+        algorithm.
 
-    def __init__(self, n_states=1024, n_actions=4,
-                 alpha=0.1, gamma=0.75,
-                 epsilon=.5,
-                 Q=None,
-                 front_sonar_min_value=.2, front_sonar_max_value=.5,
-                 side_sonar_min_value=.2, side_sonar_max_value=.5,
-                 checkpoint=None,
-                 saving_name='snapshot.model.gz',
+        """
+
+        def __init__(self, actions, random_state=None):
+            self.actions = actions
+            self.random_state = random_state or np.random.RandomState()
+
+            self.table_ = {}
+
+        def at(self, state, action=None):
+            """Get the transition value(es) for a given state.
+
+            If no entry is found on the table, random transition values are
+            created and inserted into the map on the fly, and finally returned.
+
+            :param state: the state that's been looked for.
+            :param action: Enum-object, int, default=None.
+                An action associated to the returned value.
+                If None is passed, all values (associated with every
+                possible action) are returned.
+            :return: list or float. The transition value(es).
+            """
+            state = str(state.discretize())
+
+            if state not in self.table_:
+                n_actions = len(self.actions)
+                self.table_[state] = self.random_state.rand(n_actions).tolist()
+
+            if isinstance(action, EnumValue):
+                action = action.index
+
+            weights = self.table_[state]
+            return weights if action is None else weights[action]
+
+        def __getitem__(self, item):
+            """Shortcut to `at()` method.
+
+            :param item: state or tuple (state, action)
+            :return: list or float. Transition value(es).
+
+            Examples:
+            >>> q_table = QLearning.QTable()
+            >>> state, action = State(), 3
+            >>> q_table[state]
+            >>> [20, 32, 32, 42]
+            >>> q_table[state, action]
+            >>> 42
+
+            """
+            if not isinstance(item, (list, tuple)):
+                item = (item,)
+
+            return self.at(*item)
+
+        def set(self, state, action, value):
+            """Set a transition value in the table.
+
+            :param state: State-object. The row of interest.
+            :param action: Enum-object, int. The column of interest.
+            :param value: float. The value taht should be set.
+            :return: self
+            """
+            weights = self.at(state)
+
+            if isinstance(action, EnumValue):
+                action = action.index
+
+            weights[action] = value
+
+            return self
+
+    def __init__(self, actions, alpha=0.1, gamma=0.75, starting_epsilon=.5,
+                 n_epochs=0, checkpoint=None, saving_name='snapshot.model.gz',
                  random_state=None):
-        self.n_states = n_states
-        self.n_actions = n_actions
-
-        # learning rate
+        self.actions = actions
         self.alpha = alpha
-        # discount factor
         self.gamma = gamma
-
-        # parameters in order to define the states:
-        # 'close to obstacle', 'faraway', and 'collision state'
-        # front-back (sonar)
-        self._front_sonar_min_value = front_sonar_min_value
-        self._front_sonar_max_value = front_sonar_max_value
-        # side (sonar)
-        self._side_sonar_min_value = side_sonar_min_value
-        self._side_sonar_max_value = side_sonar_max_value
-
-        self.epsilon = epsilon
+        self.starting_epsilon = starting_epsilon
+        self.n_epochs = n_epochs
         self.checkpoint = checkpoint
-
         self.saving_name = saving_name
         self.random_state = random_state or np.random.RandomState()
 
-        self.Q_ = (Q if Q is not None else
-                   self.random_state.rand(self.n_states, self.n_actions))
-
+        self.Q_ = QLearning.QTable(actions=actions,
+                                   random_state=self.random_state)
+        self.action_ = actions[0]
+        self.state_ = None
         self.cycle_ = 0
-        self.action_ = Actions.FORWARD
-        self.distance_to_goal_ = 17
-        self.state_code_ = self.discretize(5 * [np.inf])
+        self.epoch_ = 0
+        self.epsilon_ = None
 
-    def update(self, percept):
-        """Update the table Q after the execution of the current action, which
-        produced a new perception of the environment; then find which action
-        should be executed next.
+    def start(self, state):
+        self.state_ = state
 
-        :param percept: array-like, the current perception of the environment.
-        """
-        random = self.random_state
-
-        Q, old_state, a = self.Q_, int(self.state_code_, 2), self.action_
-        r = self.reward(self.state_code_, a, self.distance_to_goal_)
-
-        state_code = self.discretize(percept)
-        state = int(state_code, 2)
-
-        Q[old_state, a] = ((1 - self.alpha) * Q[old_state, a] +
-                           self.alpha * (r + self.gamma * np.max(Q[state])))
-
-        self.distance_to_goal_ = percept[0]
-        old_state_code = self.state_code_
-        self.state_code_ = state_code
-
-        if random.rand() > self.epsilon * weight_for_cycle(self.cycle_):
-            self.action_ = np.argmax(self.Q_[state])
-
-        else:
-            self.action_ = random.randint(0, self.n_actions)
-            logger.info('action %i was randomly chosen. (e=%.2f)',
-                        self.action_,
-                        self.epsilon * weight_for_cycle(self.cycle_))
-
-        if self.checkpoint and self.cycle_ % self.checkpoint == 0:
-            logger.info('saving snapshot of Q-learning model...')
-            utils.ModelStorage.save(self.Q_, name=self.saving_name)
-
-        self.cycle_ += 1
-
-        logger.info('[%i]\n\tepsilon: %.2f\n'
-                    '\tprevious and current actions: %i, %i\n'
-                    '\tQ[old_state]: %s\n'
-                    '\tQ[state]: %s\n'
-                    '\told_state: %i, state: %i',
-                    self.cycle_,
-                    self.epsilon * weight_for_cycle(self.cycle_),
-                    a, self.action_,
-                    Q[old_state], Q[state], old_state, state)
+        dw = (1 - self.epoch_ / self.n_epochs) if self.n_epochs else 1
+        self.epsilon_ = (dw * self.starting_epsilon)
 
         return self
 
-    def discretize(self, p):
-        """Discretize a perception `p`, generating the current state of the
-        agent.
-
-        :param p: current perception of the environment by the agent.
-        :return: str, a binary sequence that describes the perception.
-            E.g.: 0110110010 and 1110011011.
-
-        """
-        return (
-            binary_code(self.distance_to_goal_ - p[0],
-                        (-1) * self.DELTA_MOVE_DETECTION_THRESHOLD,
-                        self.DELTA_MOVE_DETECTION_THRESHOLD) +
-            binary_code(p[1], self._front_sonar_min_value,
-                        self._front_sonar_max_value) +
-            binary_code(p[2], self._front_sonar_min_value,
-                        self._front_sonar_max_value) +
-            binary_code(p[3], self._side_sonar_min_value,
-                        self._side_sonar_max_value) +
-            binary_code(p[4], self._side_sonar_min_value,
-                        self._side_sonar_max_value)
-        )
-
-    def reward(self, state, action, distance_to_goal):
-        """Immediate Reward Function."""
-        reward = 0
-        chunks = [state[start: start + 2] for start in range(0, len(state), 2)]
-
-        for i, chunk in enumerate(chunks):
-            decoded_state = decode_state(chunk, sonar=i)
-
-            if decoded_state == -1:
-                logger.error('[IREWARD] decoded state is incorrect')
-
-            # rewards related to states
-            if decoded_state == AgentStates.COLLISION:
-                reward += self.IMMEDIATE_REWARD['collision']
-
-            elif decoded_state == AgentStates.CLOSE_TO_GOAL:
-                reward_proximity = (self.IMMEDIATE_REWARD['closetothegoal'] *
-                                    weight_for_distance(distance_to_goal))
-                reward += reward_proximity
-                logger.info('distance: %f, reward-proximity: %f',
-                            distance_to_goal, reward_proximity)
-
-        # rewards related to actions.
-        reward += self.IMMEDIATE_REWARD[action]
-
-        logger.info('reward: %f', reward)
-        return reward
-
     def dispose(self):
+        self.action_ = self.actions[0]
+        self.state_ = None
         self.cycle_ = 0
+        self.epoch_ = 0
+        self.epsilon_ = None
+
+        self.epoch_ += 1
+
+    def update(self, state):
+        """Update the table Q after the execution of the current action,
+        which produced a new perception of the environment. Finally, find
+        which action should be executed next.
+
+        :param state: array-like, the current perception of the environment.
+        """
+        Q, s0, a0 = self.Q_, self.state_, self.action_
+
+        # Update transition graph.
+        Q.set(s0, a0, ((1 - self.alpha) * Q[s0, a0] +
+                       self.alpha * (s0.reward(a0, state) +
+                                     self.gamma * np.max(Q[state]))))
+        self.state_ = state
+
+        # Select next action.
+        if self.random_state.rand() > self.epsilon_:
+            action_code = np.argmax(Q[state])
+            self.action_ = self.actions[action_code]
+        else:
+            self.action_ = self.random_state.choice(self.actions)
+
+            logger.info('action %i was randomly chosen (e=%.2f)',
+                        self.action_.index, self.epsilon_)
+
+        if self.checkpoint and self.cycle_ % self.checkpoint == 0:
+            logger.info('saving snapshot of Q-learning model...')
+            utils.ModelStorage.save(Q.table_, name=self.saving_name)
+
+        logger.info('[%i]\n'
+                    '\tepsilon: %.2f\n'
+                    '\tactions: %s > %s\n'
+                    '\tstates: %s > %s\n'
+                    '\tQ table: %s > %s\n',
+                    self.cycle_, self.epsilon_,
+                    a0.key, self.action_.key,
+                    s0.discretize(), state.discretize(),
+                    [round(n, 3) for n in Q[s0]],
+                    [round(n, 3) for n in Q[state]])
+
+        self.cycle_ += 1
+        return self
 
     @classmethod
-    def load(cls, model='snapshot.navigation.gz', *args, **kwargs):
+    def load(cls, model='snapshot.model.json', *args, **kwargs):
         """Load a persisted model."""
-        return cls(*args, Q=utils.ModelStorage.load(model), **kwargs)
+        instance = cls(*args, **kwargs)
+        instance.Q_.table_ = utils.ModelStorage.load(
+            model, create_if_not_found=True)
+        return instance

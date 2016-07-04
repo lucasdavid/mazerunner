@@ -7,8 +7,9 @@ reinforcement learning (Q-Learning).
 The desired behavior is for the robot to use its sensors to avoid walls
 and attempt to get as close as possible to a tag placed at the kitchen.
 
-A video demonstrating the Navigator agent can be found
-[here](https://www.youtube.com/watch?v=UArqTlPcQG4&feature=youtu.be).
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=n-5PvVGxibg"
+   target="_blank"><img src="http://img.youtube.com/vi/n-5PvVGxibg/0.jpg"
+alt="NAO navigation demonstration" width="480" height="315" border="0" /></a>
 
 ## Installing
 

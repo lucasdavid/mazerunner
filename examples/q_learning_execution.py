@@ -15,7 +15,7 @@ def main():
     print(learner.IMMEDIATE_REWARD['collision'])
 
     for i in range(5):
-        action = learner.update(percept=toy_state)
+        action = learner.update(state=toy_state)
         print('action=', action)
 
         toy_state[1] -= 0.1

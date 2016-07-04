@@ -6,7 +6,9 @@ Author: Lucas David -- <ld492@drexel.edu>
 License: MIT (c) 2016
 
 """
+import json
 import os
+
 import numpy as np
 
 from .. import settings
@@ -34,20 +36,19 @@ class ModelStorage(object):
             os.mkdir(settings.DATA_FOLDER)
 
     @staticmethod
-    def save(model, name='snapshot.model.gz'):
+    def save(model, name='snapshot.model.json'):
         """Save a learning model to a file.
 
         :param model: array-like, the model that will be saved.
         :param name: str, the name under which the model will be saved.
-                     If the name ends with a '.gz' sequence, then the model
-                     is automatically compressed.
         """
         ModelStorage._prepare()
 
-        np.savetxt(os.path.join(settings.DATA_FOLDER, name), model)
+        with open(os.path.join(settings.DATA_FOLDER, name), 'w') as f:
+            json.dump(model, f)
 
     @staticmethod
-    def load(name='snapshop.model.gz'):
+    def load(name='snapshop.model.json', create_if_not_found=False):
         """Load a persisted learning model from the file.
 
         :param name: str, the name of the file which contains the model.
@@ -57,4 +58,11 @@ class ModelStorage(object):
         """
         ModelStorage._prepare()
 
-        return np.loadtxt(os.path.join(settings.DATA_FOLDER, name))
+        try:
+            with open(os.path.join(settings.DATA_FOLDER, name)) as f:
+                return json.load(f)
+        except:
+            if create_if_not_found:
+                return {}
+
+            raise

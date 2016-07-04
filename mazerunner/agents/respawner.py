@@ -8,7 +8,6 @@ License: MIT (c) 2016
 import logging
 
 from . import Walker
-from ..constants import STATES
 
 logger = logging.getLogger('mazerunner')
 
@@ -24,14 +23,14 @@ class Respawner(Walker):
     def idle(self):
         sensors = self.sensors['proximity']
         if any(s.imminent_collision for s in sensors):
-            self.state_ = STATES.stuck
+            self.state_ = self.BEHAVIORS.stuck
 
         else:
             self.motion.post.moveTo(self.STRIDE, 0, 0)
-            self.state_ = STATES.moving
+            self.state_ = self.BEHAVIORS.moving
 
         return self
 
     def moving(self):
         if not self.motion.moveIsActive():
-            self.state_ = STATES.idle
+            self.state_ = self.BEHAVIORS.idle

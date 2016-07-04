@@ -10,7 +10,7 @@ import logging
 import numpy as np
 
 from .base import Sensor
-from .. import constants, utils
+from .. import utils
 
 logger = logging.getLogger('mazerunner')
 
@@ -21,6 +21,8 @@ class ProximitySensor(Sensor):
     An abstraction for the proximity sensor in V-REP.
     
     """
+
+    COLLISION_THRESHOLD = .2
 
     def __init__(self, link, component):
         super(ProximitySensor, self).__init__(link, component=component)
@@ -39,11 +41,11 @@ class ProximitySensor(Sensor):
         data = utils.vrep.simxReadProximitySensor(
             self.adapter.link, self.adapter.handler,
             utils.vrep.simx_opmode_buffer)
-        errors = data[0]
 
-        assert not errors, 'Error retrieving value from proximity sensor'
+        if data[0] != 0:
+            logger.warning('error detecting proximity sensor (%s)', data[0])
 
-        self.last_read = None if errors else data[1:]
+        self.last_read = data[1:]
         return self
 
     @property
@@ -53,7 +55,7 @@ class ProximitySensor(Sensor):
 
         :return bool: True, if it is about to collide. False, otherwise.
         """
-        return self.distance <= constants.IMMINENT_COLLISION_THRESHOLD
+        return self.distance <= self.COLLISION_THRESHOLD
 
     @property
     def distance(self):
@@ -65,4 +67,4 @@ class ProximitySensor(Sensor):
 
         """
         detected, point = self.last_read[:2]
-        return np.linalg.norm(point) if detected else 100
+        return np.linalg.norm(point) if detected else 1

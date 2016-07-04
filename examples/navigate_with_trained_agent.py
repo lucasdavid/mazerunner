@@ -15,24 +15,37 @@ License: MIT (c) 2016
 import logging
 
 import mazerunner
-from mazerunner import agents, learning, utils
+from mazerunner import agents, learning
+from mazerunner.agents import navigator
 
 logging.basicConfig()
 logger = logging.getLogger('mazerunner')
 logger.setLevel(logging.DEBUG)
 
 INTERFACE = ('127.0.0.1', 5000)
-UPDATE_PERIOD = 0.5
-ITERATIONS = None
+UPDATE_PERIOD = 1
+ITERATIONS = 1000
+
+PARAMS = dict(
+    alpha=.2, gamma=.75, epsilon=0,
+    checkpoint=10, saving_name='snapshot.navigation.gz'
+)
 
 if __name__ == "__main__":
     print(__doc__)
 
-    # Rebuild agent.
-    agent = agents.Navigator(0, interface=INTERFACE,
-                             learning_model=learning.QLearning.load())
-
-    mazerunner.Environment(agents=[agent], update_period=UPDATE_PERIOD,
-                           life_cycles=ITERATIONS).live()
+    # Load a navigation model.
+    model = learning.QLearning.load(actions=navigator.ACTIONS, **PARAMS)
+    # Rebuild the agent.
+    agent = agents.Navigator(0, interface=INTERFACE, learning_model=model)
+    # Build the environment.
+    env = mazerunner.Environment(agents=[agent], update_period=UPDATE_PERIOD,
+                                 life_cycles=ITERATIONS)
+    try:
+        env.live()
+    except KeyboardInterrupt:
+        logger.info('Environment\'s life was interrupted by the user.')
+    except StopIteration:
+        logger.info('Environment\'s life ended naturally.')
 
     print('Bye.')

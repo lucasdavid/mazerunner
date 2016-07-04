@@ -8,7 +8,6 @@ import logging
 import numpy as np
 
 from . import base
-from ..constants import Actions, STATES
 
 logger = logging.getLogger('mazerunner')
 
@@ -19,32 +18,26 @@ class Walker(base.RoboticAgent):
     An robotic agent that walks randomly, avoiding walls.
     """
 
-    STRIDE = 1.0
+    STRIDE = 1
     SPEED = .7
-
-    INSTRUCTIONS_MAP = {
-        Actions.FORWARD: (STRIDE, 0, 0),
-        Actions.BACKWARD: (-STRIDE, 0, 0),
-        Actions.CLOCKWISE: (0, 0, -np.pi / 2),
-        Actions.CCLOCKWISE: (0, 0, np.pi / 2),
-    }
 
     def idle(self):
         """Initiates the robot movement."""
-        self.state_ = STATES.moving
+        self.behavior_ = self.BEHAVIORS.moving
 
     def moving(self):
         """Move the robot's body forward until an obstacle is detected."""
         if self.sensors['proximity'][0].imminent_collision:
             self.motion.stopMove()
             self.posture.goToPosture('Stand', self.SPEED)
-            self.state_ = STATES.thinking
+            self.behavior_ = self.BEHAVIORS.thinking
 
         elif not self.motion.moveIsActive():
             # Walker will always keep moving forward,
             # if no obstacles are found.
-            forward = self.INSTRUCTIONS_MAP[Actions.FORWARD]
-            self.motion.post.moveTo(*forward)
+            move_to = (self.STRIDE, 0, 0)
+            self.motion.post.moveTo(*move_to)
+            logger.info('Walking: %s', move_to)
 
     def thinking(self):
         """Deliberate to avoid obstacles on the path."""
@@ -55,21 +48,19 @@ class Walker(base.RoboticAgent):
 
         elif not self.sensors['proximity'][0].imminent_collision:
             # Goes back to moving state.
-            self.state_ = STATES.moving
+            self.behavior_ = self.BEHAVIORS.moving
 
-        elif all(s.imminent_collision for s in
-                 self.sensors['proximity']):
+        elif all(s.imminent_collision for s in self.sensors['proximity']):
             # There's nothing left to be done, only flag this is a dead-end.
-            self.state_ = STATES.stuck
+            self.behavior_ = self.BEHAVIORS.stuck
 
         else:
-            for sensor, maneuver in ((3, np.pi / 2),
-                                     (2, -np.pi / 2),
-                                     (1, np.pi)):
-                # Find which direction doesn't have 
-                # any obstacles and rotate to face it.
-                if not self.sensors['proximity'][sensor].imminent_collision:
-                    self.motion.post.moveTo(0, 0, maneuver)
+            peripheral_sensors = self.sensors['proximity'][1:]
+            for maneuver, sensor in zip(range(1, 4), peripheral_sensors):
+                if not sensor.imminent_collision:
+                    # A sensor that indicates no obstacles were found.
+                    # Move in that direction.
+                    self.motion.post.moveTo(0, 0, np.pi / 2)
                     break
 
         return self

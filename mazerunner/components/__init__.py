@@ -5,5 +5,6 @@ License: MIT (c) 2016
 
 """
 from .camera import Camera
+from .compass import Compass
 from .proximity_sensor import ProximitySensor
 from .tag import Tag
