@@ -14,38 +14,42 @@ License: MIT (c) 2016
 """
 import logging
 
-import mazerunner
-from mazerunner import agents, learning
+from mazerunner import Environment, agents, learning
 from mazerunner.agents import navigator
 
 logging.basicConfig()
 logger = logging.getLogger('mazerunner')
 logger.setLevel(logging.DEBUG)
 
-INTERFACE = ('127.0.0.1', 5000)
-UPDATE_PERIOD = 1
-ITERATIONS = 1000
+MODEL_PARAMS = dict(actions=navigator.ACTIONS, alpha=0.2, gamma=.75,
+                    starting_epsilon=.01, n_epochs=1)
 
-PARAMS = dict(
-    alpha=.2, gamma=.75, epsilon=0,
-    checkpoint=10, saving_name='snapshot.navigation.gz'
+AGENT_PARAMS = dict(
+    interface=('127.0.0.1', 5000),
+)
+
+ENV_PARAMS = dict(
+    update_period=1,
+    life_cycles=3000
 )
 
 if __name__ == "__main__":
     print(__doc__)
 
-    # Load a navigation model.
-    model = learning.QLearning.load(actions=navigator.ACTIONS, **PARAMS)
-    # Rebuild the agent.
-    agent = agents.Navigator(0, interface=INTERFACE, learning_model=model)
-    # Build the environment.
-    env = mazerunner.Environment(agents=[agent], update_period=UPDATE_PERIOD,
-                                 life_cycles=ITERATIONS)
-    try:
-        env.live()
-    except KeyboardInterrupt:
-        logger.info('Environment\'s life was interrupted by the user.')
-    except StopIteration:
-        logger.info('Environment\'s life ended naturally.')
+    model = learning.QLearning.load('snapshot.navtraining.json',
+                                    **MODEL_PARAMS)
+    agent = agents.Navigator(0, learning_model=model, **AGENT_PARAMS)
+    env = Environment(agents=[agent], **ENV_PARAMS)
 
-    print('Bye.')
+    try:
+        logger.info('trained navigation has started')
+        env.start().live().dispose()
+
+    except KeyboardInterrupt:
+        logger.info('environment\'s life was interrupted by the user.')
+    except StopIteration:
+        logger.info('environment\'s life ended naturally.')
+    finally:
+        env.dispose()
+
+    print('bye')

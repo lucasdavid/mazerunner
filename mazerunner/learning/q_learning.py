@@ -117,7 +117,7 @@ class QLearning(object):
 
             :param state: State-object. The row of interest.
             :param action: Enum-object, int. The column of interest.
-            :param value: float. The value taht should be set.
+            :param value: float. The value which should be set.
             :return: self
             """
             weights = self.at(state)
@@ -193,7 +193,7 @@ class QLearning(object):
 
         if self.checkpoint and self.cycle_ % self.checkpoint == 0:
             logger.info('saving snapshot of Q-learning model...')
-            utils.ModelStorage.save(Q.table_, name=self.saving_name)
+            utils.ModelStorage.save(Q.table_, path=self.saving_name)
 
         logger.info('[%i]\n'
                     '\tepsilon: %.2f\n'
@@ -213,6 +213,5 @@ class QLearning(object):
     def load(cls, model='snapshot.model.json', *args, **kwargs):
         """Load a persisted model."""
         instance = cls(*args, **kwargs)
-        instance.Q_.table_ = utils.ModelStorage.load(
-            model, create_if_not_found=True)
+        instance.Q_.table_ = utils.ModelStorage.load(model, raise_errors=False)
         return instance

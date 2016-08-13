@@ -44,24 +44,19 @@ if __name__ == "__main__":
     print(__doc__)
 
     model = learning.QLearning.load(SAVING_NAME, **MODEL_PARAMS)
-    agent = agents.Navigator(0, learning_model=model,
-                             **AGENT_PARAMS)
-
+    agent = agents.Navigator(0, learning_model=model, **AGENT_PARAMS)
     env = Environment(agents=[agent], **ENV_PARAMS)
 
     try:
         for epoch in range(N_EPOCHS):
             logger.info('epoch %i has started', epoch)
-            (env
-             .start()
-             .live()
-             .dispose())
+            env.start().live().dispose()
 
     except KeyboardInterrupt:
-        logger.info('Environment\'s life was interrupted by the user.')
+        logger.info('environment\'s life was interrupted by the user.')
     except StopIteration:
-        logger.info('Environment\'s life ended naturally.')
+        logger.info('environment\'s life ended naturally.')
     finally:
         env.dispose()
 
-    print('Bye.')
+    print('bye')

@@ -7,11 +7,8 @@ License: MIT (c) 2016
 
 """
 import json
-import os
 
 import numpy as np
-
-from .. import settings
 
 
 class ModelStorage(object):
@@ -22,7 +19,7 @@ class ModelStorage(object):
 
     Example:
         >>> # Create a model and save it to a file.
-        >>> Q = np.random.rand(40, 40)
+        >>> Q = {23: [.4, .2, .4, .0]}
         >>> ModelStorage.save(Q)
         >>> Q2 = ModelStorage.load()
         >>> np.testing.assert_array_equal(Q, Q2)
@@ -30,39 +27,30 @@ class ModelStorage(object):
     """
 
     @staticmethod
-    def _prepare():
-        """Check and create required folder structure."""
-        if not os.path.exists(settings.DATA_FOLDER):
-            os.mkdir(settings.DATA_FOLDER)
-
-    @staticmethod
-    def save(model, name='snapshot.model.json'):
+    def save(model, path='snapshot.model.json'):
         """Save a learning model to a file.
 
         :param model: array-like, the model that will be saved.
-        :param name: str, the name under which the model will be saved.
+        :param path: str, the path (filename included) under which the model
+         should be saved.
         """
-        ModelStorage._prepare()
-
-        with open(os.path.join(settings.DATA_FOLDER, name), 'w') as f:
+        with open(path, 'w') as f:
             json.dump(model, f)
 
     @staticmethod
-    def load(name='snapshop.model.json', create_if_not_found=False):
+    def load(path='snapshot.model.json', raise_errors=True):
         """Load a persisted learning model from the file.
 
-        :param name: str, the name of the file which contains the model.
-                     A file of same name must exist under
-                     `settings.DATA_FOLDER`.
+        :param path: str, the path of the file which contains the model.
+         A file under the same path must exist.
+        :param raise_errors: if True, raises an error when the model
+         isn't found. Otherwise, simply returns an empty model.
         :return: array-like, the learning model.
         """
-        ModelStorage._prepare()
-
         try:
-            with open(os.path.join(settings.DATA_FOLDER, name)) as f:
+            with open(path) as f:
                 return json.load(f)
         except:
-            if create_if_not_found:
+            if not raise_errors:
                 return {}
-
             raise

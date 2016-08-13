@@ -6,6 +6,7 @@ License: MIT (c) 2016
 """
 import logging
 
+import almath
 import numpy as np
 from enum import Enum
 
@@ -19,6 +20,8 @@ ACTIONS = Enum('forward', 'backward', 'left', 'right')
 
 
 class NavigationState(learning.State):
+    """Navigation State Sub-class, describing the world for Q-Learning."""
+
     IMMEDIATE_REWARD = {
         ACTIONS.forward: 1,
         ACTIONS.backward: 1,
@@ -98,7 +101,8 @@ class Navigator(Walker):
 
     def __init__(self, identity='', interface=('127.0.0.1', 5000), link=None,
                  learning_model=None, random_state=None):
-        super(Navigator, self).__init__(identity, interface, link, random_state)
+        super(Navigator, self).__init__(identity, interface, link,
+                                        random_state)
 
         self.learning_model = learning_model or learning.QLearning(
             actions=ACTIONS, checkpoint=10,
@@ -107,9 +111,7 @@ class Navigator(Walker):
     def start(self, link=None):
         super(Navigator, self).start(link)
 
-        self.perception_ = ([12.4] +
-                            [[0, 0, 0]] +
-                            4 * [1])
+        self.perception_ = ([12.4] + [[0, 0, 0]] + 4 * [1])
         self.learning_model.start(NavigationState(self.perception_))
 
         return self
@@ -127,17 +129,15 @@ class Navigator(Walker):
         return self
 
     def idle(self):
-        """Update the QLearning table, retrieve an action and check for
-        dead-ends."""
+        """Updates the QLearning table, retrieves an action to be performed
+        and checks for dead-ends."""
         state = NavigationState(self.perception_)
         action = self.learning_model.update(state).action_
 
         if (all(s.imminent_collision for s in self.sensors['proximity']) or
-            self.sensors['orientation'][0].is_lying_on_the_ground):
-            # There's nothing left to be done, only flag this is a dead-end
-            # so it can be restarted.
+                self.sensors['orientation'][0].is_lying_on_the_ground):
+            # There's nothing left to do. Flag this is a dead-end.
             self.behavior_ = self.BEHAVIORS.stuck
-
         else:
             move_to = self.INSTRUCTIONS_MAP[action]
 
@@ -145,10 +145,9 @@ class Navigator(Walker):
                 # It's walking straight or backwards. Reduce step size if it's
                 # going against a close obstacle.
                 dx = self.sensors['proximity'][action.index].distance
-
                 move_to = np.clip(move_to, -dx, dx).tolist()
 
-            self.motion.post.moveTo(*move_to)
+            self.motion.post.moveTo(move_to)
             self.behavior_ = self.BEHAVIORS.moving
 
         return self
