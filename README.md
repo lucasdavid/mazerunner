@@ -26,7 +26,7 @@ Finally, install MazeRunner:
 python setup.py install --user
 ```
 
-## Executing Navigation with QLearning
+## Executing Navigation with Q-Learning
 
 1. First, start `Choregraph`:
 ```shell
@@ -39,7 +39,10 @@ python setup.py install --user
 ```
 Then open one of the scenes in `mazerunner/scenes` folder and run it.
 
-3. Finally, run the navigation:
-```shell
-python mazerunner/examples/navigate.py
-```
+3. You have two options now:
+
+  3. 1. Train a navigator by executing `python mazerunner/examples/train_navigator.py`.
+    This script will move the agent and train it to achieve the goal set (kitchen, by default).
+
+  3. 2. Navigate using a previously-learned behavior by executing
+  `python mazerunner/examples/navigate_with_trained_agent.py`
