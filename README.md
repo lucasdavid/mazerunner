@@ -29,15 +29,15 @@ python setup.py install --user
 ## Executing Navigation with Q-Learning
 
 1. First, start `Choregraph`:
-```shell
-/opt/Aldebaran\ Robotics/Choregraphe\ Suite\ 2.1/bin/naoqi-bin -p 5000
-```
+   ```shell
+   /opt/Aldebaran\ Robotics/Choregraphe\ Suite\ 2.1/bin/naoqi-bin -p 5000
+   ```
 
 2. Open the V-REP simulator:
-```shell
-/path/to/vrep/vrep.sh
-```
-Then open one of the scenes in `mazerunner/scenes` folder and run it.
+   ```shell
+   /path/to/vrep/vrep.sh
+   ```
+   Then open one of the scenes in `mazerunner/scenes` folder and run it.
 
 3. You have two options now:
 
